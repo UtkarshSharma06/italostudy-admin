@@ -2,44 +2,7 @@
     "cleanUrls": true,
     "rewrites": [
         {
-            "source": "/sitemap-qa.xml",
-            "destination": "/api/sitemap-qa"
-        },
-        {
-            "source": "/status",
-            "destination": "/status.html"
-        },
-        {
-            "source": "/cent-s",
-            "destination": "/cent-s.html"
-        },
-        {
-            "source": "/imat",
-            "destination": "/imat.html"
-        },
-        {
-            "source": "/resources",
-            "destination": "/resources.html"
-        },
-
-        {
-            "source": "/exams",
-            "destination": "/exams.html"
-        },
-        {
-            "source": "/roadmap",
-            "destination": "/roadmap.html"
-        },
-        {
-            "source": "/updates",
-            "destination": "/updates.html"
-        },
-        {
-            "source": "/blog/:slug",
-            "destination": "/api/blog-post-dynamic?slug=:slug"
-        },
-        {
-            "source": "/((?!api/|sitemap.*\\.xml$).*)",
+            "source": "/((?!assets/|api/|favicon.*|logo.*).*)",
             "destination": "/index.html"
         }
     ],
