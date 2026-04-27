@@ -1,0 +1,2 @@
+-- This migration is currently unused to prevent 400 errors during consolidated RPC fetching.
+-- The dashboard has been reverted to parallel decentralized fetching for immediate stability.

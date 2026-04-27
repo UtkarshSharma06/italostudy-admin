@@ -1,0 +1,33 @@
+/* 
+  Static Restoration CSS 
+  Overrides Framer Motion "initial" states that might keep sections hidden 
+*/
+
+/* Force all motion elements to be visible */
+[style*="opacity: 0"], 
+[style*="opacity:0"],
+.motion-safe\:opacity-0 {
+    opacity: 1 !important;
+    transform: none !important;
+    visibility: visible !important;
+}
+
+/* Ensure no "ghost" modals block the screen */
+.CookieConsent, 
+[class*="CookieConsent"],
+[data-sonner-toaster] {
+    display: none !important;
+}
+
+/* Functional Mobile Menu (Static) */
+.static-mobile-menu-active {
+    display: flex !important;
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+/* Fix for HomeSEOHub grid if it's hidden */
+section.py-24.bg-slate-50 {
+    display: block !important;
+    opacity: 1 !important;
+}

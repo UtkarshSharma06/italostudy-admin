@@ -1,0 +1,21 @@
+project_id = "jyjhpqtqbwtxxgijxetq"
+
+[functions.generate-questions]
+verify_jwt = false
+
+[functions.generate-insights]
+verify_jwt = false
+
+[functions.get-livekit-token]
+verify_jwt = false
+
+[functions.seat-scraper]
+verify_jwt = false
+
+[functions.create-cashfree-order]
+verify_jwt = false
+[functions.create-dodo-order]
+verify_jwt = false
+
+[functions.dodo-webhook]
+verify_jwt = false
