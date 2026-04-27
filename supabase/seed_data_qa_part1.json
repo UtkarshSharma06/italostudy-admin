@@ -1,0 +1,466 @@
+[
+  {
+    "category": "imat",
+    "title": "Is the IMAT 2026 syllabus confirmed yet?",
+    "content": "Hi everyone, I'm Emma. I've been searching the official channels but can't find anything definitive about the 2026 syllabus. Do you think it will change much from last year?",
+    "author": "Emma",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Usually, the changes are very minor. I wouldn't worry too much yet, stick to the current one for now."
+      },
+      {
+        "author": "Lukas",
+        "content": "I agree with Matteo. They might tweak some details in biology or general knowledge, but the core remains the same."
+      },
+      {
+        "author": "Giulia",
+        "content": "Wait, I heard there might be a bigger change in the logic section? Has anyone else heard that?"
+      },
+      {
+        "author": "Finn",
+        "content": "I haven't seen anything official about the logic section. It's probably just rumors!"
+      },
+      {
+        "author": "Sofia",
+        "content": "Actually, last year they changed the number of questions in some sections. So keep an eye out for that!"
+      },
+      {
+        "author": "Zeynep",
+        "content": "Good point Sofia. I'm focusing on the sciences first, as those are usually stable."
+      },
+      {
+        "author": "Adel",
+        "content": "Yeah, sciences are the safe bet. Anyone have a link to the 2025 decree for reference?"
+      },
+      {
+        "author": "Bence",
+        "content": "Here is the link: [Universitaly IMAT 2025]. It's the best reference we have right now."
+      },
+      {
+        "author": "Emma",
+        "content": "Thanks Bence! This is super helpful. I'll stick to the 2025 one for now then."
+      },
+      {
+        "author": "Luca",
+        "content": "Glad we cleared that up. This thread is full of good info!"
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Struggling with organic chemistry nomenclature",
+    "content": "Hey! I'm Liam. I'm find the organic chemistry part of the IMAT really hard. Especially naming the more complex molecules. Any tips or shortcuts?",
+    "author": "Liam",
+    "answers": [
+      {
+        "author": "Jacob",
+        "content": "Try learning the functional groups in order of priority. That's the most important part of nomenclature."
+      },
+      {
+        "author": "Lina",
+        "content": "I found a really good YouTube channel for this. Search for 'Organic Chemistry Tutor', his videos are amazing!"
+      },
+      {
+        "author": "Chiara",
+        "content": "Also, practice drawing the molecules yourself. It helps to visualize the structure and the name."
+      },
+      {
+        "author": "Mert",
+        "content": "Naming is just about following the IUPAC rules. Once you get the basics, it becomes much easier."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT preparation from a non-science background?",
+    "content": "Hi, I'm Ava. I'm a humanities student but I've decided to apply for medicine in Italy. Is it possible to prepare well for the IMAT without a strong science background?",
+    "author": "Ava",
+    "answers": [
+      {
+        "author": "Emre",
+        "content": "It's definitely possible, but it will take more time and effort. You'll need to catch up on all the basic concepts first."
+      },
+      {
+        "author": "Mia",
+        "content": "I was in a similar situation! I started with basic textbooks and then moved to more specific prep books. It was hard but manageable."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Anyone applying for Milan IMS next year?",
+    "content": "Hey guys, I'm Noah. Just wondering who else is aiming for the International Medical School in Milan for 2026. It's a very competitive place!",
+    "author": "Noah",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: How important is General Knowledge?",
+    "content": "Hello everyone, I'm Hanna. I'm find the general knowledge section so random. Is it worth spending many hours on it or should I focus on something more predictable?",
+    "author": "Hanna",
+    "answers": [
+      {
+        "author": "Alessandro",
+        "content": "Focus on the sciences first! GK is too unpredictable. Just keep up with some major news and historical events."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Physics: Mechanics vs Electromagnetism",
+    "content": "Hi, I'm Elif. For the physics part of the IMAT, which section is usually more frequent? Mechanics or electromagnetism? I'm better at mechanics...",
+    "author": "Elif",
+    "answers": [
+      {
+        "author": "Lukas",
+        "content": "Both are quite common. I'd say mechanics usually has a few more questions, but don't ignore electromagnetism!"
+      },
+      {
+        "author": "Finn",
+        "content": "Mechanics is definitely a big topic. Also, don't forget about thermodynamics, it shows up too!"
+      },
+      {
+        "author": "Sofia",
+        "content": "I agree. Focus on your strengths but try to have a basic understanding of everything."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Best way to handle the time limit?",
+    "content": "Hello, I'm Bence. 100 minutes for 60 questions is tight. What's your strategy for the actual exam day? Do you skip hard questions and come back later?",
+    "author": "Bence",
+    "answers": [
+      {
+        "author": "Giulia",
+        "content": "Yes, always skip! Every second is precious. Do the easy ones first to build confidence and then tackle the harder ones."
+      },
+      {
+        "author": "Matteo",
+        "content": "Exactly. I usually start with biology as it's the fastest for me. Then chemistry, then physics/math and logic last."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Anyone applying for Rome Sapienza next year?",
+    "content": "Hi everyone, I'm Zalan. Rome is my first choice for medical school. Anyone else here aiming for La Sapienza? It's such a beautiful city!",
+    "author": "Zalan",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Biology: Transcription and Translation",
+    "content": "Hey! I'm Madison. I'm currently studying molecular biology. For the IMAT, do we need to know all the specific enzymes involved in transcription and translation?",
+    "author": "Madison",
+    "answers": [
+      {
+        "author": "Olivia",
+        "content": "Yes, focus on the major ones like RNA polymerase and the ribosomal units. Knowing the overall process is also very important."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Is the math section very advanced?",
+    "content": "Hi guys, I'm Liam. I haven't done much math since high school. Is the level of math required for the IMAT very hard? Should I be worried about calculus?",
+    "author": "Liam",
+    "answers": [
+      {
+        "author": "Jacob",
+        "content": "No calculus! It's mostly algebra, functions, geometry, and basic trigonometry. Nothing too advanced usually."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT results: How long to get the scores?",
+    "content": "Hello everyone, I'm Emma. For those who recently took the IMAT, how long after the exam day did it take to get your preliminary scores? Was it a long wait?",
+    "author": "Emma",
+    "answers": [
+      {
+        "author": "Noah",
+        "content": "It usually takes about 2-3 weeks for the preliminary results and then a few more for the final ranking. And yes, it's very stressful!"
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT study group in Milan?",
+    "content": "Hi! I'm Sofia. I just moved to Milan to start my preparation for the IMAT. Is anyone else here based in Milan and interested in starting a study group?",
+    "author": "Sofia",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Can I use a calculator?",
+    "content": "Hey guys, I'm Mert. Just a quick question: are we allowed to use calculators during the IMAT? My mental math is definitely not my strongest skill...",
+    "author": "Mert",
+    "answers": [
+      {
+        "author": "Lina",
+        "content": "Unfortunately, no! You'll need to rely on your mental math skills. Better start practicing now!"
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Anyone applying for Pavia IMS next year?",
+    "content": "Hi everyone, I'm Zeynep. I'm very interested in the International Medical School in Pavia. Has anyone else here applying there? Would love to connect!",
+    "author": "Zeynep",
+    "answers": [
+      {
+        "author": "Chiara",
+        "content": "Pavia is a great place to study! The medical school is very prestigious and the student life is really nice."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Dealing with exam anxiety",
+    "content": "Hello, I'm Hanna. The thought of the IMAT is making me really anxious. How do you guys cope with the pressure? Any tips or relaxation techniques?",
+    "author": "Hanna",
+    "answers": [
+      {
+        "author": "Emma",
+        "content": "Try some deep breathing exercises or meditation. Also, make sure to take regular breaks and get enough sleep during your preparation."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Biology: Genetics problems",
+    "content": "Hi guys, I'm Jacob. I'm struggling with those genetics problems where you have to calculate probabilities for different traits. Any good resources for this?",
+    "author": "Jacob",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Khan Academy has some really good videos on Punnett squares and genetics. Definitely check them out, they are very clear!"
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Anyone applying for Bologna IMS next year?",
+    "content": "Hey everyone, I'm Mia. Bologna is my first choice for medical school. Anyone else here aiming for the international course there? It's such a vibrant city!",
+    "author": "Mia",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Physics: Thermodynamics laws",
+    "content": "Hi, I'm Lukas. I'm currently reviewing thermodynamics. How much of this is usually on the IMAT? Is it just the basic laws or something more detailed?",
+    "author": "Lukas",
+    "answers": [
+      {
+        "author": "Finn",
+        "content": "Mostly the three laws and basic heat transfer concepts. Not too deep usually, but you should know the main formulas."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Guessing strategy?",
+    "content": "Hello everyone, I'm Luca. With the negative marking, what's your strategy for guessing? Do you only answer if you are 100% sure, or do you take risks?",
+    "author": "Luca",
+    "answers": [
+      {
+        "author": "Sofia",
+        "content": "I only guess if I can eliminate at least two options. Otherwise, the risk of losing 0.4 points is too high for me."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Chemistry: Equilibrium and Le Chatelier",
+    "content": "Hey! I'm Leon. I'm currently studying chemical equilibrium. Any common questions or tips about Le Chatelier's principle for the IMAT?",
+    "author": "Leon",
+    "answers": [
+      {
+        "author": "Adel",
+        "content": "Yes, Le Chatelier is very common! Make sure you understand how changes in pressure, temperature, and concentration affect the equilibrium."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Which section is the hardest?",
+    "content": "Hi everyone, I'm Bence. In your experience, which section of the IMAT is usually the hardest? For me, it's definitely the logic and critical thinking.",
+    "author": "Bence",
+    "answers": [
+      {
+        "author": "Giulia",
+        "content": "For me, it's chemistry! There's so much to memorize and the problems can be quite tricky. Logic is actually fun for me!"
+      },
+      {
+        "author": "Matteo",
+        "content": "I agree with Giulia about chemistry. Logic just takes practice to understand the common patterns."
+      },
+      {
+        "author": "Emre",
+        "content": "Bio is the most content-heavy for sure. Understanding the concepts is key, not just memorizing everything."
+      },
+      {
+        "author": "Emma",
+        "content": "I find the math/physics part hardest because I'm not a 'numbers' person. But I'm practicing a lot!"
+      },
+      {
+        "author": "Lukas",
+        "content": "Everyone has their own strengths and weaknesses. The important thing is to focus on what you find hardest."
+      },
+      {
+        "author": "Zeynep",
+        "content": "Exactly! This thread just shows how everyone is different. Good luck to all with your weakest sections!"
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT prep: How many past papers are enough?",
+    "content": "Hello everyone, I'm Zalan. I've finished most of the past papers from 2011 to 2024. Is that enough, or should I look for other similar tests like BMAT or SAT?",
+    "author": "Zalan",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Can I skip the entire Physics section?",
+    "content": "Hi guys, I'm Ashley. I'm really struggling with physics and it's only 4 questions. Is it a big risk if I just skip it and focus on getting all the biology and chemistry right?",
+    "author": "Ashley",
+    "answers": [
+      {
+        "author": "Jacob",
+        "content": "It's a common strategy for some. But remember, every point counts! Maybe just try to learn the most frequent topics in physics."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT results: Preliminary vs Final ranking",
+    "content": "Hi everyone, I'm Emma. What's the main difference between the preliminary scores and the final ranking? Does the ranking change much after they review everything?",
+    "author": "Emma",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "The preliminary score is just your points. The final ranking includes things like priority, scrolling, and quota. It can definitely change the outcome!"
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Applying as a non-EU student living in Italy?",
+    "content": "Hey! I'm Zeynep. I'm a non-EU citizen but I've been living in Italy for a few years. Do I apply through the non-EU or EU quota for medical school?",
+    "author": "Zeynep",
+    "answers": [
+      {
+        "author": "Alessandro",
+        "content": "If you have a long-term residency permit, you might be eligible for the EU quota. Check with the university's admission office for your specific case."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: How important is General Knowledge?",
+    "content": "Hello everyone, I'm Hanna. I've heard some people say that general knowledge is just easy points, and others say it's impossible to study for. What's your take on it?",
+    "author": "Hanna",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Chemistry: Acids, Bases, and pH",
+    "content": "Hi, I'm Lina. I'm currently reviewing acids and bases. For the IMAT, do we need to calculate pH for weak acids as well, or is it mostly strong ones?",
+    "author": "Lina",
+    "answers": [
+      {
+        "author": "Luca",
+        "content": "Mostly strong acids and bases. For weak ones, you might just need to understand the concept of Ka and Kb."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Anyone applying for Turin IMS next year?",
+    "content": "Hey everyone, I'm Sofia. Turin is one of my choices for medical school. Is anyone else here planning to apply for the international course there in 2026?",
+    "author": "Sofia",
+    "answers": [
+      {
+        "author": "Lucia",
+        "content": "I'm considering Turin too! It seems like a great city with a lot of clinical opportunities."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Dealing with time pressure",
+    "content": "Hello, I'm Bence. During my timed practice tests, I always feel rushed at the end. How do you guys manage your pace during the actual exam? Any specific milestones?",
+    "author": "Bence",
+    "answers": [
+      {
+        "author": "Sofia",
+        "content": "I try to keep an eye on the time every 10 minutes. For example, I aim to finish the first 25 questions within the first 40 minutes."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Biology: Cell structure and organelles",
+    "content": "Hi guys, I'm Elif. For the cell section, do we need to know all the specific functions of every single organelle? Things like peroxisomes or the cytoskeleton?",
+    "author": "Elif",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Yes, they can definitely ask about those! Focus on the main ones like mitochondria and ribosomes, but have a basic idea of all organelles."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Anyone from the US studying in Italy?",
+    "content": "Hey! I'm Jacob. I'm really curious about the transition from the US education system to the Italian one. Is it a big adjustment for students from the US?",
+    "author": "Jacob",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT: Best way to review science topics?",
+    "content": "Hello everyone, I'm Hanna. I'm looking for the most efficient way to review all the science topics before the final month. Any specific methods or apps?",
+    "author": "Hanna",
+    "answers": [
+      {
+        "author": "Emma",
+        "content": "I find that doing a lot of practice questions and then reviewing the topics where I get things wrong is the most effective way for me."
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Chemistry: Molarity and Molality",
+    "content": "Hi guys, I'm Mert. Can someone explain the main difference between molarity and molality? I always get them mixed up when solving problems...",
+    "author": "Mert",
+    "answers": [
+      {
+        "author": "Lukas",
+        "content": "Molarity is moles of solute per liter of SOLUTION. Molality is moles of solute per kilogram of SOLVENT. Remember: molality is 'mass'!"
+      }
+    ]
+  },
+  {
+    "category": "imat",
+    "title": "Anyone applying for Rome Sapienza (Med-School)?",
+    "content": "Hey! I'm Zalan. Rome is my top choice for medicine. Is anyone else here applying for the international course at La Sapienza? How are you preparing?",
+    "author": "Zalan",
+    "answers": []
+  },
+  {
+    "category": "imat",
+    "title": "IMAT Physics: Circuits and electricity",
+    "content": "Hi, I'm Noah. I'm currently studying DC circuits. Is electricity a common topic in the IMAT physics section? Should I spend much time on it?",
+    "author": "Noah",
+    "answers": [
+      {
+        "author": "Emre",
+        "content": "Yes, electricity is quite common! Make sure you understand resistors in series and parallel, and Ohm's law well."
+      }
+    ]
+  }
+]

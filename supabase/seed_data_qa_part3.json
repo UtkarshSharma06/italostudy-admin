@@ -1,0 +1,381 @@
+[
+  {
+    "category": "study tips",
+    "title": "Best study music for long sessions?",
+    "content": "Hi everyone, I'm Liam. I'm finding it hard to stay focused during my 6-hour study blocks. What kind of music helps you stay in the zone without being distracting?",
+    "author": "Liam",
+    "answers": [
+      {
+        "author": "Zeynep",
+        "content": "Lo-Fi beats are my go-to! There are some great 'study with me' playlists on YouTube that use them."
+      },
+      {
+        "author": "Matteo",
+        "content": "I prefer brown noise or ambient rain sounds. It blocks out everything else perfectly."
+      },
+      {
+        "author": "Lukas",
+        "content": "Classical music is also great, but only the ones without intense crescendos!"
+      },
+      {
+        "author": "Emma",
+        "content": "I actually prefer total silence. If it's too quiet, I use a white noise machine."
+      },
+      {
+        "author": "Sofia",
+        "content": "Try 'Video Game Soundtracks'. They are designed to be background music that keeps you engaged!"
+      },
+      {
+        "author": "Emre",
+        "content": "That's a genius idea Sofia, the Skyrim soundtrack is actually amazing for studying."
+      },
+      {
+        "author": "Jacob",
+        "content": "I usually go with Synthwave. It has a steady rhythm that keeps me moving through the material."
+      },
+      {
+        "author": "Hanna",
+        "content": "Does anyone use nature sounds? Like birds or forest noises?"
+      },
+      {
+        "author": "Bence",
+        "content": "Yes, I use an app called Tide for that. Highly recommend it!"
+      },
+      {
+        "author": "Liam",
+        "content": "Thanks everyone! I'll try the video game soundtracks today. Sounds fun!"
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "How to stay motivated during a gap year?",
+    "content": "Hello! I'm Zalan. I've decided to take a gap year to focus entirely on the IMAT. How do you guys stay motivated when you aren't in a school environment?",
+    "author": "Zalan",
+    "answers": [
+      {
+        "author": "Lukas",
+        "content": "Create a strict schedule and stick to it! Treat studying like a full-time job."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "IMAT preparation: Is 4 months enough?",
+    "content": "Hi, I'm Madison. I'm planning to take the IMAT this year and I'm wondering if starting now (4 months before) is enough time. I'm a quick learner!",
+    "author": "Madison",
+    "answers": [
+      {
+        "author": "Noah",
+        "content": "4 months is doable if you are consistent. Focus on your weakest areas first!"
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Handling a low practice test score",
+    "content": "Hi guys, I'm Elif. I just got a really low score on my first mock test. I'm feeling quite discouraged. How do you guys keep going after a bad result?",
+    "author": "Elif",
+    "answers": [
+      {
+        "author": "Emma",
+        "content": "Don't sweat it! The first mock is always the hardest. Use it as a roadmap for what to study next."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Best ways to review science topics before the exam?",
+    "content": "Hello everyone, I'm Hanna. I'm looking for the most efficient way to review all the biology and chemistry topics in the last month. Any tips?",
+    "author": "Hanna",
+    "answers": []
+  },
+  {
+    "category": "study tips",
+    "title": "Active recall vs. Passive studying for IMAT?",
+    "content": "Hi! I'm Liam. I've heard a lot about active recall. Is it really that much better than just re-reading textbooks? What's your experience?",
+    "author": "Liam",
+    "answers": [
+      {
+        "author": "Sofia",
+        "content": "Yes! Re-reading is largely a waste of time. Try blurting or using flashcards instead."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Best time of day to take full-length mocks?",
+    "content": "Hi everyone, I'm Bence. Should I take my mock tests in the morning or afternoon? Does it matter for realistic preparation?",
+    "author": "Bence",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Try to take them at the exact same time as the real exam! It helps train your brain to be alert during those hours."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Staying organized with so many topics?",
+    "content": "Hello! I'm Zeynep. I'm feeling overwhelmed by the volume of material for the IMAT. How do you guys keep track of what you've covered?",
+    "author": "Zeynep",
+    "answers": []
+  },
+  {
+    "category": "study tips",
+    "title": "Dealing with phone distractions while studying?",
+    "content": "Hi, I'm Jacob. I find myself checking my phone every 10 minutes. How do you stay focused? Any specific apps or methods?",
+    "author": "Jacob",
+    "answers": [
+      {
+        "author": "Lina",
+        "content": "I use 'Forest'. It gamifies staying off your phone and it's actually really effective!"
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Importance of regular breaks during the day?",
+    "content": "Hi everyone, I'm Elif. I often study for 4 hours straight without a break. Is this okay or should I be pausing more frequently?",
+    "author": "Elif",
+    "answers": [
+      {
+        "author": "Finn",
+        "content": "Definitely pause! Your brain stops absorbing info after about 50-90 minutes. Try the Pomodoro method."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Pomodoro technique: 25/5 or 50/10? (Poll)",
+    "content": "Hi! I'm Liam. Which Pomodoro interval do you guys find most effective for long-term study? I'm currently trying 50/10.",
+    "author": "Liam",
+    "answers": [
+      {
+        "author": "Mia",
+        "content": "I prefer 50/10 because it allows for more 'deep work' sessions. 25 minutes feels too short for complex topics."
+      },
+      {
+        "author": "Luca",
+        "content": "I'm a 25/5 fan. It keeps me from getting bored or overwhelmed."
+      },
+      {
+        "author": "Chiara",
+        "content": "I usually do 90/15. It matches the university lecture style better."
+      },
+      {
+        "author": "Emre",
+        "content": "90 minutes is a lot! I stick to 50/10 personally."
+      }
+    ]
+  },
+  {
+    "category": "general",
+    "title": "Finding student housing in Milan - Tips?",
+    "content": "Hi everyone, I'm Madison. I'll be moving to Milan next year. Any advice on where to look for housing that isn't insanely expensive?",
+    "author": "Madison",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Look at areas like Lambrate or Bicocca. They are a bit further out but much more affordable than the center!"
+      }
+    ]
+  },
+  {
+    "category": "general",
+    "title": "Student life in Turin: Is it lively?",
+    "content": "Hello, I'm Finn. I'm considering Turin as my first choice. What's the atmosphere like for international students there?",
+    "author": "Finn",
+    "answers": [
+      {
+        "author": "Sofia",
+        "content": "Turin is amazing! Very beautiful, great food, and lots of students. You'll love it."
+      }
+    ]
+  },
+  {
+    "category": "general",
+    "title": "Public transport in Italy: Monthly passes?",
+    "content": "Hi, I'm Luca. How much do student transport passes usually cost in cities like Milan or Rome? Is it worth it?",
+    "author": "Luca",
+    "answers": []
+  },
+  {
+    "category": "general",
+    "title": "How much Italian do I really need for med school?",
+    "content": "Hello everyone, I'm Noah. I'm applying for an English course, but I'm worried about daily life and hospital rounds. How much Italian should I know?",
+    "author": "Noah",
+    "answers": [
+      {
+        "author": "Emre",
+        "content": "For daily life, A2 is enough. But for hospital rounds in year 3, you'll want to be at B1/B2 to communicate with patients!"
+      }
+    ]
+  },
+  {
+    "category": "general",
+    "title": "Cost of living in Pavia vs Milan?",
+    "content": "Hey! I'm Bence. Is Pavia significantly cheaper than Milan? I'm trying to decide between the two for my preference list.",
+    "author": "Bence",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Yes, Pavia is much cheaper! Rent can be half of what you'd pay in Milan for a similar room."
+      }
+    ]
+  },
+  {
+    "category": "general",
+    "title": "Opening a bank account in Italy as a student",
+    "content": "Hi everyone, I'm Madison. What's the best bank in Italy for foreigners? Any specific one that has good English support?",
+    "author": "Madison",
+    "answers": []
+  },
+  {
+    "category": "admissions",
+    "title": "Dichiarazione di Valore (DOV) vs. CIMEA - Which is better?",
+    "content": "Hi! I'm Emma. I've heard CIMEA is faster than DOV. Is that true for Canadian students? Which should I apply for?",
+    "author": "Emma",
+    "answers": [
+      {
+        "author": "Sofia",
+        "content": "CIMEA is generally faster and easier because it's all online. But check if your specific university accepts it first!"
+      }
+    ]
+  },
+  {
+    "category": "admissions",
+    "title": "Anyone applying for Pavia IMS next year?",
+    "content": "Hello! I'm Zalan. Pavia is my top choice. Is anyone else here aiming for the 2026 intake? Let's connect!",
+    "author": "Zalan",
+    "answers": []
+  },
+  {
+    "category": "admissions",
+    "title": "SAT requirements for private medical schools in Italy?",
+    "content": "Hi, I'm Jacob. I'm applying to some private schools too. Do they all require the SAT or is there a different test for each one?",
+    "author": "Jacob",
+    "answers": [
+      {
+        "author": "Luca",
+        "content": "Most have their own specific tests (like the Cattolica or Humanitas tests). Very few use the SAT directly for medicine."
+      }
+    ]
+  },
+  {
+    "category": "admissions",
+    "title": "Applying as non-EU student living in Italy",
+    "content": "Hi everyone, I'm Zeynep. I'm living in Italy with a residency permit. Do I apply through the non-EU or EU quota? It's a bit confusing.",
+    "author": "Zeynep",
+    "answers": [
+      {
+        "author": "Alessandro",
+        "content": "If your permit is for study, you are usually STILL non-EU. If you have a long-term 'Permesso di Soggiorno', you apply as EU. Check the decree carefully!"
+      }
+    ]
+  },
+  {
+    "category": "admissions",
+    "title": "Universitaly portal: Common registration errors",
+    "content": "Hello, I'm Olivia. I'm having trouble uploading my documents to Universitaly. Is there a size limit for the PDF files?",
+    "author": "Olivia",
+    "answers": []
+  },
+  {
+    "category": "admissions",
+    "title": "IMAT results: Wait time for the final ranking?",
+    "content": "Hi everyone, I'm Luca. How long after the exam is the official ranking released? I've heard it's almost a month!",
+    "author": "Luca",
+    "answers": [
+      {
+        "author": "Emma",
+        "content": "Yes, it usually takes about 3-4 weeks for the final ranking to appear. The wait is the worst part!"
+      }
+    ]
+  },
+  {
+    "category": "admissions",
+    "title": "What to do if I miss the first preference?",
+    "content": "Hey! I'm Liam. If I don't get into my first choice university, how does the 'scrolling' (scorrimenti) process work? Do I just wait?",
+    "author": "Liam",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Exactly. You'll be assigned or booked for your lower choices. If you wait, you might get into a higher one as people drop out."
+      },
+      {
+        "author": "Chiara",
+        "content": "But be careful! If you are 'assigned', you MUST enroll within 4 days or you lose your spot entirely."
+      },
+      {
+        "author": "Sofia",
+        "content": "This is a great point. I missed my spot last year because I didn't see the email. Don't be like me!"
+      },
+      {
+        "author": "Jacob",
+        "content": "Wow, thanks for the warning Sofia. I'll be checking my email every hour once rankings are out."
+      },
+      {
+        "author": "Liam",
+        "content": "4 days is not much time at all! Thanks for the heads up."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Best tips for biology diagrams?",
+    "content": "Hi everyone, I'm Hanna. I'm struggling to remember all the diagrams for cell respiration and photosynthesis. Any creative ways to learn them?",
+    "author": "Hanna",
+    "answers": []
+  },
+  {
+    "category": "study tips",
+    "title": "How many mock tests are 'too many'?",
+    "content": "Hello! I'm Zeynep. I've been doing one mock test every day. Is that too much? I'm worried about burning out before the real thing.",
+    "author": "Zeynep",
+    "answers": [
+      {
+        "author": "Lukas",
+        "content": "One a day is quite intense! I'd recommend 2-3 a week, and spend the other days reviewing the mistakes you made."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Breaking through a study plateau",
+    "content": "Hi everyone, I'm Luca. I've been stuck at the same mock score for 3 weeks. How do you break through and start improving again?",
+    "author": "Luca",
+    "answers": [
+      {
+        "author": "Lina",
+        "content": "Identify the specific topics you keep missing. Don't just do more mocks—go back to the textbook for those specific areas!"
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Recommended apps for IMAT prep?",
+    "content": "Hi! I'm Liam. Besides Anki, what other apps do you guys use to stay on top of your studies? Looking for something for scheduling.",
+    "author": "Liam",
+    "answers": []
+  },
+  {
+    "category": "study tips",
+    "title": "Logical reasoning help - Syllogisms",
+    "content": "Hello everyone, I'm Hanna. I'm having trouble with 'No A are B' type questions. Any simple diagrams to help visualize these?",
+    "author": "Hanna",
+    "answers": [
+      {
+        "author": "Matteo",
+        "content": "Use Venn diagrams! For 'No A are B', just draw two separate circles that don't touch. It makes the logic much simpler."
+      }
+    ]
+  },
+  {
+    "category": "study tips",
+    "title": "Staying positive during test week",
+    "content": "Hi everyone, I'm Bence. The exam is in 7 days and I'm feeling extremely stressed. How do you keep a positive mindset right before the big day?",
+    "author": "Bence",
+    "answers": []
+  }
+]
