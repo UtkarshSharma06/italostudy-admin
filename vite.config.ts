@@ -6,9 +6,9 @@ import fs from "fs";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "0.0.0.0",
+    host: "localhost",
     port: 8081,
-    hmr: { clientPort: 8081 },
+    strictPort: true,
   },
   plugins: [
     react(),
