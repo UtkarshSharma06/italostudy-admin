@@ -13,11 +13,6 @@ dist-ssr
 *.local
 .env
 .env.*
-*.json
-!package.json
-!tsconfig.json
-!components.json
-!package-lock.json
 
 # Editor directories and files
 .vscode/*
@@ -31,3 +26,13 @@ dist-ssr
 *.sw?
 static-backups/
 italostudy-e925d6c08ee6.json
+
+# Allow config files
+!*.json
+!*.config.js
+!*.config.ts
+!*.jsonb
+
+# But ignore large data/temp JSONs if any
+scratch_*.json
+italostudy-*.json
