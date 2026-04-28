@@ -96,7 +96,9 @@ export default function PaymentsManager() {
                         email
                     )
                 `)
-                .neq('plan_id', 'explorer');
+                .neq('plan_id', 'explorer')
+                .neq('plan_id', 'STORE_ORDER'); // Store payments are managed in italostudy-store-admin — never show here
+
 
             if (timeframe !== 'all') {
                 let startDate = new Date();
