@@ -176,7 +176,11 @@ export default function Auth() {
                 
                 {/* Logo Section */}
                 <div className="flex flex-col items-center mb-10">
-                    <img src="/logo.webp" alt="Italostudy Admin" className="h-9 w-auto mb-6" />
+                    <div className="flex items-center gap-3 mb-6">
+                        <img src="/logo.webp" alt="Italostudy" className="h-8 w-auto" />
+                        <div className="w-[1px] h-5 bg-slate-200"></div>
+                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Admin</span>
+                    </div>
                     <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
                         {requiresMFA ? 'Two-Factor Authentication' : isForgotPassword ? 'Reset Password' : 'System Operations'}
                     </h1>
