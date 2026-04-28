@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2, ShieldCheck, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Auth() {
@@ -20,22 +20,29 @@ export default function Auth() {
 
     const { user, profile, signIn, signOut, resetPassword, mfa } = useAuth();
     const navigate = useNavigate();
-    const { toast } = useToast();
 
-    // Check existing session for redirect
+    // Check existing session for redirect or access denial
     useEffect(() => {
         if (user && profile && !requiresMFA) {
             const isAdminRole = profile.role === 'admin' || profile.role === 'sub_admin';
             if (isAdminRole) {
                 navigate('/', { replace: true });
+            } else {
+                // If logged in but not admin (common for Google OAuth users),
+                // we must sign them out and inform them.
+                signOut().then(() => {
+                    toast.error('Access Denied', {
+                        description: 'You do not have administrative privileges.',
+                    });
+                });
             }
         }
-    }, [user, profile, requiresMFA, navigate]);
+    }, [user, profile, requiresMFA, navigate, signOut, toast]);
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email) {
-            toast({ title: 'Error', description: 'Please enter your email.', variant: 'destructive' });
+            toast.error('Please enter your email.');
             return;
         }
 
@@ -44,13 +51,12 @@ export default function Auth() {
             const { error } = await resetPassword(email);
             if (error) throw error;
             
-            toast({ 
-                title: 'Email Sent', 
+            toast.success('Email Sent', { 
                 description: "If an account exists, a reset link has been sent to your email." 
             });
             setIsForgotPassword(false);
         } catch (err: any) {
-            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+            toast.error(err.message);
         } finally {
             setIsLoading(false);
         }
@@ -64,7 +70,7 @@ export default function Auth() {
         try {
             const { error } = await mfa.challengeAndVerify(mfaFactorId, mfaCode);
             if (error) {
-                toast({ title: 'Verification Failed', description: 'Invalid 2FA code.', variant: 'destructive' });
+                toast.error('Verification Failed', { description: 'Invalid 2FA code.' });
                 setIsLoading(false);
                 return;
             }
@@ -80,15 +86,15 @@ export default function Auth() {
 
                 if (userProfile?.role !== 'admin' && userProfile?.role !== 'sub_admin') {
                     await signOut();
-                    toast({ title: 'Access Denied', description: 'You lack administrative privileges.', variant: 'destructive' });
+                    toast.error('Access Denied', { description: 'You lack administrative privileges.' });
                 } else {
-                    toast({ title: 'Authorized', description: "2FA verified. Welcome back." });
+                    toast.success('Authorized', { description: "2FA verified. Welcome back." });
                     setRequiresMFA(false);
                     navigate('/', { replace: true });
                 }
             }
         } catch (err: any) {
-            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+            toast.error(err.message);
         } finally {
             setIsLoading(false);
         }
@@ -104,10 +110,8 @@ export default function Auth() {
             const { data, error } = await signIn(email, password);
             
             if (error) {
-                toast({
-                    title: 'Authentication Failed',
+                toast.error('Authentication Failed', {
                     description: 'Invalid credentials. Please try again.',
-                    variant: 'destructive',
                 });
                 setIsLoading(false);
                 return;
@@ -135,18 +139,16 @@ export default function Auth() {
 
                 if (userProfile?.role !== 'admin' && userProfile?.role !== 'sub_admin') {
                     await signOut();
-                    toast({
-                        title: 'Access Denied',
+                    toast.error('Access Denied', {
                         description: 'You do not have administrative privileges.',
-                        variant: 'destructive',
                     });
                 } else {
-                    toast({ title: 'Authorized', description: "Welcome to the control panel." });
+                    toast.success('Authorized', { description: "Welcome to the control panel." });
                     navigate('/', { replace: true });
                 }
             }
         } catch (err: any) {
-             toast({ title: 'System Error', description: err.message, variant: 'destructive' });
+             toast.error('System Error', { description: err.message });
         } finally {
             setIsLoading(false);
         }
@@ -163,7 +165,7 @@ export default function Auth() {
             });
             if (error) throw error;
         } catch (err: any) {
-            toast({ title: 'Google Login Error', description: err.message, variant: 'destructive' });
+            toast.error('Google Login Error', { description: err.message });
             setIsLoading(false);
         }
     };

@@ -90,7 +90,7 @@ const CommunityManager = lazy(() => import('@/components/admin/CommunityManager'
 const QuestionReportManager = lazy(() => import('@/components/admin/QuestionReportManager'));
 const QAReportManager = lazy(() => import('@/components/admin/QAReportManager'));
 const ExamManager = lazy(() => import('@/components/admin/ExamManager'));
-const SeatRadarManager = lazy(() => import('@/components/admin/SeatRadarManager'));
+
 const PageContentManager = lazy(() => import('@/components/admin/PageContentManager'));
 const ReviewManager = lazy(() => import('@/components/admin/ReviewManager'));
 const PlatformUpdatesManager = lazy(() => import('@/components/admin/PlatformUpdatesManager'));
@@ -999,7 +999,7 @@ export default function Admin() {
         { title: "Finance", items: [{ id: "payments", label: "Payments", icon: Wallet }, { id: "pricing", label: "Pricing", icon: Zap }, { id: "coupons", label: "Coupons", icon: Ticket }] },
         { title: "Management", items: [{ id: "sessions", label: "Sessions", icon: Calendar }, { id: "series", label: "Mock Series", icon: Layers }, { id: "reports", label: "Question Reports", icon: AlertTriangle }, { id: "qa-reports", label: "Q&A Reports", icon: ShieldAlert }, { id: "mock-evals", label: "Mock Grade", icon: ShieldCheck }, { id: "writing-evals", label: "Essay Grade", icon: PenTool }, { id: "site-reviews", label: "Site Reviews", icon: Star }] },
         { title: "Material" as any, items: [{ id: "exam-manager", label: "Exam Model", icon: Layers }, { id: "learning", label: "Lessons", icon: Brain }, { id: "reading", label: "Reading", icon: BookOpen }, { id: "listening", label: "Listening", icon: Headphones }, { id: "writing-tasks", label: "Tasks", icon: Pencil }, { id: "practice", label: "Practice Bank", icon: Layers }, { id: "booklet", label: "Booklet Generator", icon: BookOpen }, { id: "3d-labs", label: "Labs", icon: Box }, { id: "resources", label: "Resources", icon: FileText }, { id: "blog", label: "Blog", icon: Newspaper }, { id: "page-content", label: "Page Content", icon: FileEdit }, { id: "status-hub", label: "Status Hub", icon: ChartIcon }] },
-        { title: "Ops", items: [{ id: "users", label: "Students", icon: UsersIcon }, { id: "seat-radar", label: "Seat Radar", icon: Radar }, { id: "consultants", label: "Staff", icon: UserCog }, { id: "community", label: "Community", icon: Hash }, { id: "feedback", label: "Feedback", icon: MessageSquare }, { id: "notifications", label: "Alerts", icon: Bell }, { id: "announcements", label: "Banner Ads", icon: Megaphone }, { id: "security", label: "Security & Bans", icon: ShieldCheck }, { id: "system-config", label: "Settings", icon: Settings }, ...(isSuperAdmin ? [{ id: "sub-admins", label: "Sub-Admins", icon: UserPlus }] : [])] }
+        { title: "Ops", items: [{ id: "users", label: "Students", icon: UsersIcon }, { id: "consultants", label: "Staff", icon: UserCog }, { id: "community", label: "Community", icon: Hash }, { id: "feedback", label: "Feedback", icon: MessageSquare }, { id: "notifications", label: "Alerts", icon: Bell }, { id: "announcements", label: "Banner Ads", icon: Megaphone }, { id: "security", label: "Security & Bans", icon: ShieldCheck }, { id: "system-config", label: "Settings", icon: Settings }, ...(isSuperAdmin ? [{ id: "sub-admins", label: "Sub-Admins", icon: UserPlus }] : [])] }
     ].map(group => ({
         ...group,
         items: group.items.filter(item => isSuperAdmin || allowedTabs.includes(item.id))
@@ -1361,7 +1361,7 @@ export default function Admin() {
                                 <TabsContent value="feedback" className="mt-0 focus-visible:outline-none">{activeTab === 'feedback' && <FeedbackManager />}</TabsContent>
                                 <TabsContent value="community" className="mt-0 focus-visible:outline-none">{activeTab === 'community' && <CommunityManager />}</TabsContent>
                                 <TabsContent value="users" className="mt-0 focus-visible:outline-none">{activeTab === 'users' && <UserManager />}</TabsContent>
-                                <TabsContent value="seat-radar" className="mt-0 focus-visible:outline-none">{activeTab === 'seat-radar' && <SeatRadarManager />}</TabsContent>
+
                                 <TabsContent value="consultants" className="mt-0 focus-visible:outline-none">{activeTab === 'consultants' && <ConsultantManager />}</TabsContent>
                                 <TabsContent value="site-reviews" className="mt-0 focus-visible:outline-none">{activeTab === 'site-reviews' && <ReviewManager />}</TabsContent>
                                 {(isSuperAdmin || allowedTabs.includes('notifications')) && (

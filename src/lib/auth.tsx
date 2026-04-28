@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
-import { invalidateDashboardCache } from '@/hooks/useDashboardPrefetch';
+
 
 interface AuthContextType {
   user: User | null;
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, first_name, last_name, username, email, avatar_url, selected_exam, subscription_tier, selected_plan, is_banned, created_at, role, phone_number, study_hours, target_score, telegram_verification_token, telegram_chat_id, payment_provider, provider_subscription_id, subscription_expiry_date')
+        .select('id, display_name, first_name, last_name, username, email, avatar_url, is_banned, created_at, role, phone_number, cart')
         .eq('id', userId)
         .single();
 
@@ -157,13 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Auto-sync Google avatar if missing
         const { data: { user: authUser } } = await supabase.auth.getUser();
-
-        // Auto-generate Telegram verification token if missing
-        if (!data.telegram_verification_token) {
-          const newToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-          await supabase.from('profiles').update({ telegram_verification_token: newToken }).eq('id', userId);
-          data.telegram_verification_token = newToken;
-        }
 
         // Sync Cart from Cloud to Local on login/refresh
         await syncCart((data as any).cart || []);
@@ -326,7 +319,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    invalidateDashboardCache(); // Clear prefetch cache before sign-out
     await supabase.auth.signOut();
     setProfile(null);
     setUser(null);

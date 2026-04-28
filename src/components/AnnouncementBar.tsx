@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useExam } from '@/context/ExamContext';
+
 import { X } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
@@ -54,7 +54,7 @@ interface AnnouncementBarProps {
 export default function AnnouncementBar({ previewData }: AnnouncementBarProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { activeExam } = useExam();
+
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [dismissedIds, setDismissedIds] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(!previewData);
@@ -86,7 +86,7 @@ export default function AnnouncementBar({ previewData }: AnnouncementBarProps) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [location.pathname, previewData, activeExam?.id]);
+    }, [location.pathname, previewData]);
 
     const fetchAnnouncements = async () => {
         try {
@@ -99,7 +99,7 @@ export default function AnnouncementBar({ previewData }: AnnouncementBarProps) {
             }
 
             const isStore = path.startsWith('/store') || path.startsWith('/mobile/store');
-            const isDashboard = path.includes('/dashboard');
+            const isDashboard = path.includes('/dashboard') || path.startsWith('/admin');
 
             const { data, error } = await supabase
                 .from('site_announcements' as any)
@@ -117,21 +117,17 @@ export default function AnnouncementBar({ previewData }: AnnouncementBarProps) {
                     if (target === 'dashboard' && isDashboard) return true;
                     if (target === 'store' && isStore) return true;
                     
-                    // Match specific exam IDs (e.g., 'imat', 'cent-s') only on dashboard
-                    if (isDashboard && activeExam?.id === target) return true;
                     
                     // Public Popup Logic
-                    if (!isDashboard) {
-                        const isHome = path === '/';
-                        const isPricing = path === '/pricing';
-                        const isBlog = path === '/blog' || path.startsWith('/blog/');
-                        
-                        if (target === 'public_popup' && !isStore) return true;
-                        if (target === 'public_popup_home' && isHome) return true;
-                        if (target === 'public_popup_store' && isStore) return true;
-                        if (target === 'public_popup_pricing' && isPricing) return true;
-                        if (target === 'public_popup_blog' && isBlog) return true;
-                    }
+                    const isHome = path === '/';
+                    const isPricing = path === '/pricing';
+                    const isBlog = path === '/blog' || path.startsWith('/blog/');
+                    
+                    if (target === 'public_popup') return true;
+                    if (target === 'public_popup_home' && isHome) return true;
+                    if (target === 'public_popup_store' && isStore) return true;
+                    if (target === 'public_popup_pricing' && isPricing) return true;
+                    if (target === 'public_popup_blog' && isBlog) return true;
                     
                     return false;
                 });

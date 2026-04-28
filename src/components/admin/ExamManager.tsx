@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useExam } from '@/context/ExamContext';
+
 import {
     Plus, Trash2, Edit2, Save, X, Layout,
     BookOpen, List, Target, Clock, Settings,
@@ -70,7 +70,7 @@ interface Exam {
 }
 
 export default function ExamManager() {
-    const { refreshExams } = useExam();
+
     const [exams, setExams] = useState<Exam[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingExam, setEditingExam] = useState<Exam | null>(null);
@@ -128,7 +128,7 @@ export default function ExamManager() {
             toast({ title: `Exam ${editingExam ? 'updated' : 'created'} successfully` });
             setIsDialogOpen(false);
             fetchExams();
-            refreshExams();
+
             setEditingExam(null);
         } else {
             toast({ title: "Error saving exam", description: error.message, variant: "destructive" });

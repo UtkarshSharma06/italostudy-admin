@@ -9,8 +9,6 @@ verify_jwt = false
 [functions.get-livekit-token]
 verify_jwt = false
 
-[functions.seat-scraper]
-verify_jwt = false
 
 [functions.create-cashfree-order]
 verify_jwt = false
