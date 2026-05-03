@@ -16,7 +16,8 @@ import {
 import { toast } from 'sonner';
 import PaymentConfig from '@/components/admin/PaymentConfig';
 
-export default function SystemConfig() {
+export default function SystemConfig({ permissions, isSuperAdmin }: { permissions?: any, isSuperAdmin?: boolean }) {
+    const canEdit = isSuperAdmin || permissions?.can_edit === true;
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [config, setConfig] = useState({
@@ -141,9 +142,15 @@ export default function SystemConfig() {
                     </div>
                 </div>
                 <Button
-                    onClick={handleSave}
+                    onClick={() => {
+                        if (!canEdit) {
+                            toast.error("Modification Restricted: Not allowed by super admin.");
+                            return;
+                        }
+                        handleSave();
+                    }}
                     disabled={isSaving}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 h-12 font-bold transition-all active:scale-95"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 h-12 font-bold transition-all active:scale-95 disabled:opacity-50"
                 >
                     {isSaving ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     Save Settings
@@ -159,12 +166,13 @@ export default function SystemConfig() {
                             <h3 className="font-bold text-slate-900 dark:text-white text-sm">General Configuration</h3>
                         </div>
 
-                        <div className="space-y-4">
+                             <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Website Name</Label>
                                 <Input
                                     value={config.site_name}
                                     onChange={e => setConfig({ ...config, site_name: e.target.value })}
+                                    disabled={!canEdit}
                                     className="rounded-xl border-slate-200 dark:border-slate-800"
                                 />
                             </div>
@@ -173,6 +181,7 @@ export default function SystemConfig() {
                                 <Input
                                     value={config.support_email}
                                     onChange={e => setConfig({ ...config, support_email: e.target.value })}
+                                    disabled={!canEdit}
                                     className="rounded-xl border-slate-200 dark:border-slate-800"
                                 />
                             </div>
@@ -191,9 +200,10 @@ export default function SystemConfig() {
                                     <p className="text-xs font-bold text-slate-900 dark:text-white">Maintenance Mode</p>
                                     <p className="text-[10px] font-medium text-slate-400 mt-0.5">Pause public access to the platform</p>
                                 </div>
-                                <Switch
+                                 <Switch
                                     checked={config.maintenance_mode}
                                     onCheckedChange={val => setConfig({ ...config, maintenance_mode: val })}
+                                    disabled={!canEdit}
                                 />
                             </div>
 
@@ -202,9 +212,10 @@ export default function SystemConfig() {
                                     <p className="text-xs font-bold text-slate-900 dark:text-white">User Registrations</p>
                                     <p className="text-[10px] font-medium text-slate-400 mt-0.5">Allow new students to create accounts</p>
                                 </div>
-                                <Switch
+                                 <Switch
                                     checked={config.allow_registrations}
                                     onCheckedChange={val => setConfig({ ...config, allow_registrations: val })}
+                                    disabled={!canEdit}
                                 />
                             </div>
 
@@ -213,9 +224,10 @@ export default function SystemConfig() {
                                     <p className="text-xs font-bold text-amber-900 dark:text-amber-400">Trustpilot Collector</p>
                                     <p className="text-[10px] font-medium text-amber-600/70 dark:text-amber-500/50 mt-0.5">Gate mock exams behind a review screenshot</p>
                                 </div>
-                                <Switch
+                                 <Switch
                                     checked={(config as any).is_review_collector_enabled}
                                     onCheckedChange={val => setConfig({ ...config, is_review_collector_enabled: val } as any)}
+                                    disabled={!canEdit}
                                 />
                             </div>
                         </div>

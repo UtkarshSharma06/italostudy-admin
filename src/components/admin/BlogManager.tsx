@@ -52,8 +52,8 @@ export default function BlogManager({ permissions, isSuperAdmin = true }: BlogMa
     const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
     const { toast } = useToast();
 
-    const canEdit = isSuperAdmin || permissions?.can_edit;
-    const canDelete = isSuperAdmin || permissions?.can_delete;
+    const canEdit = isSuperAdmin || permissions?.can_edit === true;
+    const canDelete = isSuperAdmin || permissions?.can_delete === true;
 
     useEffect(() => {
         fetchPosts();
@@ -73,7 +73,7 @@ export default function BlogManager({ permissions, isSuperAdmin = true }: BlogMa
                 variant: "destructive",
             });
         } else {
-            setPosts(data || []);
+            setPosts((data as any) || []);
         }
         setIsLoading(false);
     };
@@ -128,9 +128,14 @@ export default function BlogManager({ permissions, isSuperAdmin = true }: BlogMa
                     <p className="text-slate-500 font-bold text-sm">Design search-engine friendly and conversion-oriented content.</p>
                 </div>
                 <Button
-                    onClick={() => setIsDashboardOpen(true)}
+                    onClick={() => {
+                        if (!canEdit) {
+                            toast({ title: "Access Denied", description: "Writing blog posts is not allowed by super admin.", variant: "destructive" });
+                            return;
+                        }
+                        setIsDashboardOpen(true);
+                    }}
                     className="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl h-14 px-8 font-black uppercase tracking-widest gap-3 shadow-xl shadow-slate-200"
-                    disabled={!canEdit}
                 >
                     <Plus className="w-5 h-5" />
                     Create New Entry
@@ -199,10 +204,13 @@ export default function BlogManager({ permissions, isSuperAdmin = true }: BlogMa
                                         size="sm"
                                         className="rounded-xl border-slate-200 h-10 px-4 font-bold gap-2 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                                         onClick={() => {
+                                            if (!canEdit) {
+                                                toast({ title: "Access Denied", description: "Modifying blog posts is not allowed by super admin.", variant: "destructive" });
+                                                return;
+                                            }
                                             setEditingPost(post);
                                             setIsDashboardOpen(true);
                                         }}
-                                        disabled={!canEdit}
                                     >
                                         <Pencil className="w-4 h-4" />
                                         Edit
@@ -211,8 +219,13 @@ export default function BlogManager({ permissions, isSuperAdmin = true }: BlogMa
                                         variant="ghost"
                                         size="sm"
                                         className="rounded-xl h-10 px-4 font-bold text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                                        onClick={() => handleDeletePost(post.id)}
-                                        disabled={!canDelete}
+                                        onClick={() => {
+                                            if (!canDelete) {
+                                                toast({ title: "Access Denied", description: "Deleting blog posts is not allowed by super admin.", variant: "destructive" });
+                                                return;
+                                            }
+                                            handleDeletePost(post.id);
+                                        }}
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </Button>

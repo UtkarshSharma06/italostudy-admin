@@ -59,7 +59,8 @@ const TARGETS = [
     { id: 'public_popup_blog', name: 'Public Popup (Blog Only)' }
 ];
 
-export default function AnnouncementManager() {
+export default function AnnouncementManager({ permissions, isSuperAdmin }: { permissions?: any, isSuperAdmin?: boolean }) {
+    const canBroadcast = isSuperAdmin || permissions?.can_broadcast === true;
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -356,6 +357,13 @@ export default function AnnouncementManager() {
 
                         <Button
                             disabled={isSubmitting}
+                            onClick={(e) => {
+                                if (!canBroadcast) {
+                                    e.preventDefault();
+                                    toast.error("Announcement Broadcast restricted by super admin.");
+                                    return;
+                                }
+                            }}
                             className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-[20px] h-14 font-black uppercase tracking-[0.2em] text-sm gap-3 shadow-xl shadow-indigo-100 transition-all active:scale-95"
                         >
                             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingId ? <Zap className="w-5 h-5 fill-current" /> : <Plus className="w-5 h-5" />)}
@@ -434,14 +442,26 @@ export default function AnnouncementManager() {
                                             
                                             <div className="flex flex-col gap-2">
                                                 <button
-                                                    onClick={() => handleEdit(ann)}
+                                                    onClick={() => {
+                                                        if (!canBroadcast) {
+                                                            toast.error("Action Restricted: Not allowed by super admin.");
+                                                            return;
+                                                        }
+                                                        handleEdit(ann);
+                                                    }}
                                                     className="w-10 h-10 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                                                     title="Edit Campaign"
                                                 >
                                                     <Pencil className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => toggleStatus(ann.id, ann.is_active)}
+                                                    onClick={() => {
+                                                        if (!canBroadcast) {
+                                                            toast.error("Action Restricted: Not allowed by super admin.");
+                                                            return;
+                                                        }
+                                                        toggleStatus(ann.id, ann.is_active);
+                                                    }}
                                                     className={cn(
                                                         "w-10 h-10 rounded-2xl flex items-center justify-center transition-all shadow-sm",
                                                         ann.is_active ? "bg-amber-50 text-amber-600 hover:bg-amber-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
@@ -451,7 +471,13 @@ export default function AnnouncementManager() {
                                                     <Eye className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(ann.id)}
+                                                    onClick={() => {
+                                                        if (!canBroadcast) {
+                                                            toast.error("Action Restricted: Not allowed by super admin.");
+                                                            return;
+                                                        }
+                                                        handleDelete(ann.id);
+                                                    }}
                                                     className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
                                                     title="Archive"
                                                 >

@@ -31,6 +31,9 @@ interface AuthContextType {
     can_edit: boolean;
     can_delete: boolean;
     can_export: boolean;
+    can_view_pii: boolean;
+    can_manage_staff: boolean;
+    can_broadcast: boolean;
   };
 }
 
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [aal, setAal] = useState<string | null>(null);
   const [hasMFA, setHasMFA] = useState(false);
@@ -47,7 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState({
     can_edit: false,
     can_delete: false,
-    can_export: false
+    can_export: false,
+    can_view_pii: false,
+    can_manage_staff: false,
+    can_broadcast: false
   });
 
   // ─── Profile Caching Logic ──────────────────────────────────────────────────
@@ -81,7 +88,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setAllowedTabs([]);
-          setPermissions({ can_edit: false, can_delete: false, can_export: false });
+          setPermissions({ 
+            can_edit: false, 
+            can_delete: false, 
+            can_export: false,
+            can_view_pii: false,
+            can_manage_staff: false,
+            can_broadcast: false
+          });
+
           setLoading(false);
         }
       }
@@ -134,7 +149,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setSession(null);
           setAllowedTabs([]);
-          setPermissions({ can_edit: false, can_delete: false, can_export: false });
+          setPermissions({ 
+            can_edit: false, 
+            can_delete: false, 
+            can_export: false,
+            can_view_pii: false,
+            can_manage_staff: false,
+            can_broadcast: false
+          });
           window.location.href = '/auth?banned=true';
           return;
         }
@@ -162,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await syncCart((data as any).cart || []);
 
         setProfile(data);
+        setIsSuperAdmin(data.email === 'contact@italostudy.com' || data.role === 'admin');
       } else {
         // Handle case where profile is not found (deleted)
         await supabase.auth.signOut();
@@ -169,7 +192,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setSession(null);
         setAllowedTabs([]);
-        setPermissions({ can_edit: false, can_delete: false, can_export: false });
+        setPermissions({ 
+          can_edit: false, 
+          can_delete: false, 
+          can_export: false,
+          can_view_pii: false,
+          can_manage_staff: false,
+          can_broadcast: false
+        });
         window.location.href = '/auth?deleted=true';
       }
     } catch (error) {
@@ -200,7 +230,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(null);
               setSession(null);
               setAllowedTabs([]);
-              setPermissions({ can_edit: false, can_delete: false, can_export: false });
+              setPermissions({ 
+                can_edit: false, 
+                can_delete: false, 
+                can_export: false,
+                can_view_pii: false,
+                can_manage_staff: false,
+                can_broadcast: false
+              });
               window.location.href = `/auth?${redirectParams}`;
             });
           } else {
@@ -220,6 +257,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
               }
             }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Realtime Admin Permissions Updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('permission_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'admin_permissions',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload: any) => {
+          console.log("[Auth] Permission Change Detected:", payload);
+          if (payload.new && payload.new.permissions) {
+            setPermissions(payload.new.permissions);
+            if (payload.new.allowed_tabs) {
+              setAllowedTabs(payload.new.allowed_tabs);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            setPermissions({ 
+              can_edit: false, 
+              can_delete: false, 
+              can_export: false,
+              can_view_pii: false,
+              can_manage_staff: false,
+              can_broadcast: false
+            });
+            setAllowedTabs([]);
           }
         }
       )
@@ -324,7 +402,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setAllowedTabs([]);
-    setPermissions({ can_edit: false, can_delete: false, can_export: false });
+    setPermissions({ 
+      can_edit: false, 
+      can_delete: false, 
+      can_export: false,
+      can_view_pii: false,
+      can_manage_staff: false,
+      can_broadcast: false
+    });
   };
 
   const signInWithGoogle = async (redirectTo?: string) => {
@@ -411,7 +496,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       session,
+      isSuperAdmin,
       loading,
+      refreshPermissions: () => user && fetchProfile(user.id),
       signUp,
       signIn,
       signOut,

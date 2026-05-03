@@ -17,7 +17,8 @@ import {
     UserPlus,
     Trash2,
     Edit3,
-    Download
+    Download,
+    Megaphone
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -25,30 +26,40 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const ALL_TABS = [
     { id: "analytics", label: "Dashboard", category: "Analytics" },
-    { id: "mock-results", label: "Exam Results", category: "Analytics" },
+    { id: "marketing", label: "Marketing", category: "Analytics" },
+    { id: "seo-health", label: "SEO Health", category: "Analytics" },
+    { id: "mock-results", label: "Results", category: "Analytics" },
     { id: "payments", label: "Payments", category: "Finance" },
     { id: "pricing", label: "Pricing", category: "Finance" },
     { id: "coupons", label: "Coupons", category: "Finance" },
-    { id: "sessions", label: "Mock Sessions", category: "Exams" },
-    { id: "reports", label: "Question Reports", category: "Exams" },
-    { id: "mock-evals", label: "Mock Grading", category: "Assessments" },
-    { id: "writing-evals", label: "Essay Grading", category: "Assessments" },
-    { id: "learning", label: "Lessons", category: "Study Material" },
-    { id: "reading", label: "Reading Practice", category: "Study Material" },
-    { id: "listening", label: "Listening Practice", category: "Study Material" },
-    { id: "writing-tasks", label: "Writing Tasks", category: "Study Material" },
-    { id: "practice", label: "Practice Bank", category: "Study Material" },
-    { id: "3d-labs", label: "Interactive 3D", category: "Content" },
-    { id: "resources", label: "Resources", category: "Content" },
-    { id: "blog", label: "Blog & Updates", category: "Content" },
-    { id: "users", label: "Student Management", category: "System" },
-    { id: "consultants", label: "Consultants", category: "System" },
-    { id: "community", label: "Community", category: "System" },
-    { id: "feedback", label: "User Feedback", category: "System" },
-    { id: "notifications", label: "Alerts Center", category: "System" },
-    { id: "security", label: "Security & Bans", category: "System" },
-    { id: "system-config", label: "System Config", category: "System" },
-    { id: "sub-admins", label: "Sub-Admins", category: "System" }
+    { id: "sessions", label: "Sessions", category: "Management" },
+    { id: "series", label: "Mock Series", category: "Management" },
+    { id: "reports", label: "Question Reports", category: "Management" },
+    { id: "qa-reports", label: "Q&A Reports", category: "Management" },
+    { id: "mock-evals", label: "Mock Grade", category: "Management" },
+    { id: "writing-evals", label: "Essay Grade", category: "Management" },
+    { id: "site-reviews", label: "Site Reviews", category: "Management" },
+    { id: "exam-manager", label: "Exam Model", category: "Material" },
+    { id: "learning", label: "Lessons", category: "Material" },
+    { id: "reading", label: "Reading", category: "Material" },
+    { id: "listening", label: "Listening", category: "Material" },
+    { id: "writing-tasks", label: "Tasks", category: "Material" },
+    { id: "practice", label: "Practice Bank", category: "Material" },
+    { id: "booklet", label: "Booklet Generator", category: "Material" },
+    { id: "3d-labs", label: "Labs", category: "Material" },
+    { id: "resources", label: "Resources", category: "Material" },
+    { id: "blog", label: "Blog", category: "Material" },
+    { id: "page-content", label: "Page Content", category: "Material" },
+    { id: "status-hub", label: "Status Hub", category: "Material" },
+    { id: "users", label: "Students", category: "Ops" },
+    { id: "consultants", label: "Staff", category: "Ops" },
+    { id: "community", label: "Community", category: "Ops" },
+    { id: "feedback", label: "Feedback", category: "Ops" },
+    { id: "notifications", label: "Alerts", category: "Ops" },
+    { id: "announcements", label: "Banner Ads", category: "Ops" },
+    { id: "security", label: "Security & Bans", category: "Ops" },
+    { id: "system-config", label: "Settings", category: "Ops" },
+    { id: "sub-admins", label: "Sub-Admins", category: "Ops" }
 ];
 
 interface Profile {
@@ -65,10 +76,14 @@ interface AdminPermission {
         can_edit: boolean;
         can_delete: boolean;
         can_export: boolean;
+        can_view_pii: boolean;
+        can_manage_staff: boolean;
+        can_broadcast: boolean;
     };
 }
 
-export default function SubAdminManager() {
+export default function SubAdminManager({ permissions: currentAdminPermissions, isSuperAdmin }: { permissions?: any, isSuperAdmin?: boolean }) {
+    const canManageStaff = isSuperAdmin || currentAdminPermissions?.can_manage_staff === true;
     const [users, setUsers] = useState<Profile[]>([]);
     const [permissions, setPermissions] = useState<Record<string, string[]>>({});
     const [actionPermissions, setActionPermissions] = useState<Record<string, any>>({});
@@ -104,7 +119,10 @@ export default function SubAdminManager() {
                 actionPermMap[p.user_id] = p.permissions || {
                     can_edit: true,
                     can_delete: false,
-                    can_export: false
+                    can_export: false,
+                    can_view_pii: false,
+                    can_manage_staff: false,
+                    can_broadcast: false
                 };
             });
 
@@ -123,6 +141,10 @@ export default function SubAdminManager() {
     };
 
     const handleUpdatePermissions = async (userId: string, tabId: string) => {
+        if (!canManageStaff) {
+            toast({ title: "Access Denied", description: "You don't have permission to manage staff settings.", variant: "destructive" });
+            return;
+        }
         const currentTabs = permissions[userId] || [];
         const newTabs = currentTabs.includes(tabId)
             ? currentTabs.filter(id => id !== tabId)
@@ -134,7 +156,14 @@ export default function SubAdminManager() {
                 .upsert({
                     user_id: userId,
                     allowed_tabs: newTabs,
-                    permissions: actionPermissions[userId] || { can_edit: true, can_delete: false, can_export: false }
+                    permissions: actionPermissions[userId] || { 
+                        can_edit: true, 
+                        can_delete: false, 
+                        can_export: false,
+                        can_view_pii: false,
+                        can_manage_staff: false,
+                        can_broadcast: false
+                    }
                 });
 
             if (error) throw error;
@@ -154,7 +183,18 @@ export default function SubAdminManager() {
     };
 
     const handleUpdateActionPermission = async (userId: string, action: string, value: boolean) => {
-        const currentPerms = actionPermissions[userId] || { can_edit: true, can_delete: false, can_export: false };
+        if (!canManageStaff) {
+            toast({ title: "Access Denied", description: "Modifying capabilities requires Staff Management permission.", variant: "destructive" });
+            return;
+        }
+        const currentPerms = actionPermissions[userId] || { 
+            can_edit: true, 
+            can_delete: false, 
+            can_export: false,
+            can_view_pii: false,
+            can_manage_staff: false,
+            can_broadcast: false
+        };
         const newPerms = { ...currentPerms, [action]: value };
 
         try {
@@ -183,6 +223,10 @@ export default function SubAdminManager() {
     };
 
     const promoteToRole = async (user: Profile, role: 'admin' | 'sub_admin') => {
+        if (!canManageStaff) {
+            toast({ title: "Access Denied", description: "Not allowed by super admin.", variant: "destructive" });
+            return;
+        }
         try {
             const { error: roleError } = await supabase
                 .from('profiles')
@@ -213,6 +257,10 @@ export default function SubAdminManager() {
     };
 
     const revokeAdmin = async (userId: string) => {
+        if (!canManageStaff) {
+            toast({ title: "Access Denied", description: "Revoking access is restricted to super admins.", variant: "destructive" });
+            return;
+        }
         try {
             const { error: roleError } = await supabase
                 .from('profiles')
@@ -331,25 +379,33 @@ export default function SubAdminManager() {
 
                             <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Capabilities</span>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                     {[
-                                        { id: 'can_edit', label: 'Modify', icon: Edit3, color: 'text-indigo-600' },
-                                        { id: 'can_delete', label: 'Delete', icon: Trash2, color: 'text-rose-600' },
-                                        { id: 'can_export', label: 'Export', icon: Download, color: 'text-emerald-600' }
+                                        { id: 'can_edit', label: 'Modify Data', icon: Edit3, color: 'text-indigo-600' },
+                                        { id: 'can_delete', label: 'Delete Data', icon: Trash2, color: 'text-rose-600' },
+                                        { id: 'can_export', label: 'Export PDF/CSV', icon: Download, color: 'text-emerald-600' },
+                                        { id: 'can_view_pii', label: 'View PII (IP/Email)', icon: ShieldAlert, color: 'text-amber-600' },
+                                        { id: 'can_manage_staff', label: 'Staff Management', icon: UserPlus, color: 'text-blue-600' },
+                                        { id: 'can_broadcast', label: 'Alerts & Ads', icon: Megaphone, color: 'text-purple-600' }
                                     ].map(action => (
                                         <button
                                             key={action.id}
                                             disabled={user.role === 'admin'}
                                             onClick={() => handleUpdateActionPermission(user.id, action.id, !actionPermissions[user.id]?.[action.id])}
                                             className={cn(
-                                                "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all",
+                                                "flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
                                                 actionPermissions[user.id]?.[action.id] || user.role === 'admin'
                                                     ? "bg-white dark:bg-slate-900 border-slate-200 shadow-sm"
                                                     : "bg-slate-50 dark:bg-slate-800/50 border-transparent opacity-60"
                                             )}
                                         >
-                                            <action.icon className={cn("w-4 h-4", actionPermissions[user.id]?.[action.id] || user.role === 'admin' ? action.color : "text-slate-300")} />
-                                            <span className="text-[9px] font-bold uppercase">{action.label}</span>
+                                            <action.icon className={cn("w-4 h-4 shrink-0", actionPermissions[user.id]?.[action.id] || user.role === 'admin' ? action.color : "text-slate-300")} />
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black uppercase truncate">{action.label}</p>
+                                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                    {actionPermissions[user.id]?.[action.id] || user.role === 'admin' ? 'Enabled' : 'Disabled'}
+                                                </p>
+                                            </div>
                                         </button>
                                     ))}
                                 </div>

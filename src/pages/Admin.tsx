@@ -48,14 +48,13 @@ import {
     Image as ImageIcon,
     Table as TableIcon,
     PencilLine,
-    Activity as ChartIcon,
+    Activity,
     Link as LinkIcon,
     FileDown,
     FileEdit,
     Star,
     CheckCircle2,
     Lock,
-    Activity,
     Moon,
     Sun
 } from 'lucide-react';
@@ -278,7 +277,7 @@ const SidebarContent = ({
                 )}>
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-800 shrink-0">
-                            <ChartIcon className="w-4 h-4 text-emerald-500" />
+                            <Activity className="w-4 h-4 text-emerald-500" />
                         </div>
                         <AnimatePresence>
                             {expanded && (
@@ -316,7 +315,16 @@ const SidebarContent = ({
 };
 
 export default function Admin() {
-    const { user, profile, signOut } = useAuth() as any;
+    const { 
+        user, 
+        profile, 
+        signOut, 
+        isSuperAdmin, 
+        loading: authLoading, 
+        permissions: authPermissions, 
+        allowedTabs: authTabs,
+        refreshPermissions
+    } = useAuth() as any;
     const { theme, setTheme } = useTheme();
     const displayName = profile?.display_name || profile?.full_name?.split(' ')[0] || 'Admin';
     const { toast } = useToast();
@@ -457,11 +465,17 @@ export default function Admin() {
     }>>({});
 
 
-    const auth = useAuth() as any;
-    const isSuperAdmin = profile?.email === 'contact@italostudy.com' || profile?.role === 'admin';
-    const allowedTabs = isSuperAdmin ? [] : auth.allowedTabs;
-    const actionPermissions = isSuperAdmin ? { can_edit: true, can_delete: true, can_export: true } : auth.permissions;
-    const permissionsLoading = auth.loading;
+
+    const allowedTabs = isSuperAdmin ? [] : authTabs;
+    const actionPermissions = isSuperAdmin ? { 
+        can_edit: true, 
+        can_delete: true, 
+        can_export: true,
+        can_view_pii: true,
+        can_manage_staff: true,
+        can_broadcast: true
+    } : authPermissions;
+    const permissionsLoading = authLoading;
 
     useEffect(() => {
         // Load persisted session and questions
@@ -995,10 +1009,10 @@ export default function Admin() {
     };
 
     const navigationGroups = [
-        { title: "Analytics", items: [{ id: "analytics", label: "Dashboard", icon: BarChart3 }, { id: "marketing", label: "Marketing", icon: ChartIcon }, { id: "seo-health", label: "SEO Health", icon: Activity }, { id: "mock-results", label: "Results", icon: Trophy }] },
+        { title: "Analytics", items: [{ id: "analytics", label: "Dashboard", icon: BarChart3 }, { id: "marketing", label: "Marketing", icon: Activity }, { id: "seo-health", label: "SEO Health", icon: Activity }, { id: "mock-results", label: "Results", icon: Trophy }] },
         { title: "Finance", items: [{ id: "payments", label: "Payments", icon: Wallet }, { id: "pricing", label: "Pricing", icon: Zap }, { id: "coupons", label: "Coupons", icon: Ticket }] },
         { title: "Management", items: [{ id: "sessions", label: "Sessions", icon: Calendar }, { id: "series", label: "Mock Series", icon: Layers }, { id: "reports", label: "Question Reports", icon: AlertTriangle }, { id: "qa-reports", label: "Q&A Reports", icon: ShieldAlert }, { id: "mock-evals", label: "Mock Grade", icon: ShieldCheck }, { id: "writing-evals", label: "Essay Grade", icon: PenTool }, { id: "site-reviews", label: "Site Reviews", icon: Star }] },
-        { title: "Material" as any, items: [{ id: "exam-manager", label: "Exam Model", icon: Layers }, { id: "learning", label: "Lessons", icon: Brain }, { id: "reading", label: "Reading", icon: BookOpen }, { id: "listening", label: "Listening", icon: Headphones }, { id: "writing-tasks", label: "Tasks", icon: Pencil }, { id: "practice", label: "Practice Bank", icon: Layers }, { id: "booklet", label: "Booklet Generator", icon: BookOpen }, { id: "3d-labs", label: "Labs", icon: Box }, { id: "resources", label: "Resources", icon: FileText }, { id: "blog", label: "Blog", icon: Newspaper }, { id: "page-content", label: "Page Content", icon: FileEdit }, { id: "status-hub", label: "Status Hub", icon: ChartIcon }] },
+        { title: "Material" as any, items: [{ id: "exam-manager", label: "Exam Model", icon: Layers }, { id: "learning", label: "Lessons", icon: Brain }, { id: "reading", label: "Reading", icon: BookOpen }, { id: "listening", label: "Listening", icon: Headphones }, { id: "writing-tasks", label: "Tasks", icon: Pencil }, { id: "practice", label: "Practice Bank", icon: Layers }, { id: "booklet", label: "Booklet Generator", icon: BookOpen }, { id: "3d-labs", label: "Labs", icon: Box }, { id: "resources", label: "Resources", icon: FileText }, { id: "blog", label: "Blog", icon: Newspaper }, { id: "page-content", label: "Page Content", icon: FileEdit }, { id: "status-hub", label: "Status Hub", icon: Activity }] },
         { title: "Ops", items: [{ id: "users", label: "Students", icon: UsersIcon }, { id: "consultants", label: "Staff", icon: UserCog }, { id: "community", label: "Community", icon: Hash }, { id: "feedback", label: "Feedback", icon: MessageSquare }, { id: "notifications", label: "Alerts", icon: Bell }, { id: "announcements", label: "Banner Ads", icon: Megaphone }, { id: "security", label: "Security & Bans", icon: ShieldCheck }, { id: "system-config", label: "Settings", icon: Settings }, ...(isSuperAdmin ? [{ id: "sub-admins", label: "Sub-Admins", icon: UserPlus }] : [])] }
     ].map(group => ({
         ...group,
@@ -1006,6 +1020,20 @@ export default function Admin() {
     })).filter(group => group.items.length > 0);
 
 
+
+    if (authLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-white dark:bg-slate-950">
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+                    <div className="space-y-1">
+                        <p className="text-lg font-semibold text-slate-900 dark:text-white">Loading Panel</p>
+                        <p className="text-sm text-slate-500">Verifying administrator access...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <Layout showHeader={false}>
@@ -1055,10 +1083,38 @@ export default function Admin() {
 
                         <div className="flex items-center gap-3 lg:gap-6">
                             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-full border border-slate-100 dark:border-slate-800/50">
-                                <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{displayName.charAt(0).toUpperCase()}</span>
+                                <div className="flex flex-col items-end mr-4">
+                                    <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">
+                                        {profile?.display_name || 'Administrator'}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <div className={cn(
+                                            "w-1.5 h-1.5 rounded-full animate-pulse",
+                                            isSuperAdmin ? "bg-amber-500" : "bg-indigo-500"
+                                        )} />
+                                        <span className={cn(
+                                            "text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded",
+                                            isSuperAdmin ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"
+                                        )}>
+                                            {isSuperAdmin ? 'Super Admin' : 'Sub-Admin'}
+                                        </span>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-4 w-4 ml-1 text-slate-400 hover:text-indigo-500"
+                                            onClick={() => {
+                                                refreshPermissions();
+                                                toast({ title: "Syncing", description: "Refreshing permissions from server..." });
+                                            }}
+                                            title="Sync Permissions"
+                                        >
+                                            <Activity className="w-3 h-3" />
+                                        </Button>
+                                    </div>
                                 </div>
-                                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">{displayName}</span>
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-200 dark:shadow-none">
+                                    {profile?.display_name?.charAt(0) || 'A'}
+                                </div>
                             </div>
 
                             <Button
@@ -1105,7 +1161,7 @@ export default function Admin() {
 
                                 <Suspense fallback={<div className="flex h-[40vh] items-center justify-center w-full"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>}>
                                 <TabsContent value="exam-manager" className="mt-0 focus-visible:outline-none">{activeTab === 'exam-manager' && <ExamManager />}</TabsContent>
-                                <TabsContent value="learning" className="mt-0 focus-visible:outline-none">{activeTab === 'learning' && <LearningManager permissions={actionPermissions} />}</TabsContent>
+                                <TabsContent value="learning" className="mt-0 focus-visible:outline-none">{activeTab === 'learning' && <LearningManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
                                 <TabsContent value="analytics" className="mt-0 focus-visible:outline-none">{activeTab === 'analytics' && <AnalyticsOverview />}</TabsContent>
                                 <TabsContent value="marketing" className="mt-0 focus-visible:outline-none">{activeTab === 'marketing' && <MarketingAnalytics />}</TabsContent>
                                 <TabsContent value="payments" className="mt-0 focus-visible:outline-none">{activeTab === 'payments' && <PaymentsManager />}</TabsContent>
@@ -1342,40 +1398,39 @@ export default function Admin() {
                                     </div>
                                     )}
                                 </TabsContent>
-                                <TabsContent value="series" className="mt-0 focus-visible:outline-none">{activeTab === 'series' && <MockSeriesManager />}</TabsContent>
-                                <TabsContent value="pricing" className="mt-0 focus-visible:outline-none">{activeTab === 'pricing' && <PricingManager />}</TabsContent>
-                                <TabsContent value="mock-evals" className="mt-0 focus-visible:outline-none">{activeTab === 'mock-evals' && <MockEvaluationManager />}</TabsContent>
-                                <TabsContent value="writing-evals" className="mt-0 focus-visible:outline-none">{activeTab === 'writing-evals' && <WritingManager mode="evaluations" />}</TabsContent>
-                                <TabsContent value="reading" className="mt-0 focus-visible:outline-none">{activeTab === 'reading' && <ReadingManager />}</TabsContent>
-                                <TabsContent value="listening" className="mt-0 focus-visible:outline-none">{activeTab === 'listening' && <ListeningManager />}</TabsContent>
-                                <TabsContent value="writing-tasks" className="mt-0 focus-visible:outline-none">{activeTab === 'writing-tasks' && <WritingManager mode="tasks" />}</TabsContent>
-                                <TabsContent value="practice" className="mt-0 focus-visible:outline-none">{activeTab === 'practice' && <PracticeManager />}</TabsContent>
-                                <TabsContent value="booklet" className="mt-0 focus-visible:outline-none">{activeTab === 'booklet' && <BookletManager />}</TabsContent>
-                                <TabsContent value="reports" className="mt-0 focus-visible:outline-none">{activeTab === 'reports' && <QuestionReportManager />}</TabsContent>
-                                <TabsContent value="qa-reports" className="mt-0 focus-visible:outline-none">{activeTab === 'qa-reports' && <QAReportManager />}</TabsContent>
-                                <TabsContent value="3d-labs" className="mt-0 focus-visible:outline-none">{activeTab === '3d-labs' && <LabManager />}</TabsContent>
+                                {(isSuperAdmin || allowedTabs.includes('series')) && <TabsContent value="series" className="mt-0 focus-visible:outline-none">{activeTab === 'series' && <MockSeriesManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('pricing')) && <TabsContent value="pricing" className="mt-0 focus-visible:outline-none">{activeTab === 'pricing' && <PricingManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('mock-evals')) && <TabsContent value="mock-evals" className="mt-0 focus-visible:outline-none">{activeTab === 'mock-evals' && <MockEvaluationManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('writing-evals')) && <TabsContent value="writing-evals" className="mt-0 focus-visible:outline-none">{activeTab === 'writing-evals' && <WritingManager mode="evaluations" permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('reading')) && <TabsContent value="reading" className="mt-0 focus-visible:outline-none">{activeTab === 'reading' && <ReadingManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('listening')) && <TabsContent value="listening" className="mt-0 focus-visible:outline-none">{activeTab === 'listening' && <ListeningManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('writing-tasks')) && <TabsContent value="writing-tasks" className="mt-0 focus-visible:outline-none">{activeTab === 'writing-tasks' && <WritingManager mode="tasks" permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('practice')) && <TabsContent value="practice" className="mt-0 focus-visible:outline-none">{activeTab === 'practice' && <PracticeManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('booklet')) && <TabsContent value="booklet" className="mt-0 focus-visible:outline-none">{activeTab === 'booklet' && <BookletManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('reports')) && <TabsContent value="reports" className="mt-0 focus-visible:outline-none">{activeTab === 'reports' && <QuestionReportManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('qa-reports')) && <TabsContent value="qa-reports" className="mt-0 focus-visible:outline-none">{activeTab === 'qa-reports' && <QAReportManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('3d-labs')) && <TabsContent value="3d-labs" className="mt-0 focus-visible:outline-none">{activeTab === '3d-labs' && <LabManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
                                 <TabsContent value="resources" className="mt-0 focus-visible:outline-none">{activeTab === 'resources' && <ResourceManager />}</TabsContent>
                                 <TabsContent value="blog" className="mt-0 focus-visible:outline-none">{activeTab === 'blog' && <BlogManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
-                                <TabsContent value="page-content" className="mt-0 focus-visible:outline-none">{activeTab === 'page-content' && <PageContentManager />}</TabsContent>
-                                <TabsContent value="status-hub" className="mt-0 focus-visible:outline-none">{activeTab === 'status-hub' && <PlatformUpdatesManager />}</TabsContent>
-                                <TabsContent value="feedback" className="mt-0 focus-visible:outline-none">{activeTab === 'feedback' && <FeedbackManager />}</TabsContent>
-                                <TabsContent value="community" className="mt-0 focus-visible:outline-none">{activeTab === 'community' && <CommunityManager />}</TabsContent>
-                                <TabsContent value="users" className="mt-0 focus-visible:outline-none">{activeTab === 'users' && <UserManager />}</TabsContent>
-
-                                <TabsContent value="consultants" className="mt-0 focus-visible:outline-none">{activeTab === 'consultants' && <ConsultantManager />}</TabsContent>
-                                <TabsContent value="site-reviews" className="mt-0 focus-visible:outline-none">{activeTab === 'site-reviews' && <ReviewManager />}</TabsContent>
+                                {(isSuperAdmin || allowedTabs.includes('page-content')) && <TabsContent value="page-content" className="mt-0 focus-visible:outline-none">{activeTab === 'page-content' && <PageContentManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('status-hub')) && <TabsContent value="status-hub" className="mt-0 focus-visible:outline-none">{activeTab === 'status-hub' && <PlatformUpdatesManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('feedback')) && <TabsContent value="feedback" className="mt-0 focus-visible:outline-none">{activeTab === 'feedback' && <FeedbackManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('community')) && <TabsContent value="community" className="mt-0 focus-visible:outline-none">{activeTab === 'community' && <CommunityManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('users')) && <TabsContent value="users" className="mt-0 focus-visible:outline-none">{activeTab === 'users' && <UserManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('consultants')) && <TabsContent value="consultants" className="mt-0 focus-visible:outline-none">{activeTab === 'consultants' && <ConsultantManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
+                                {(isSuperAdmin || allowedTabs.includes('site-reviews')) && <TabsContent value="site-reviews" className="mt-0 focus-visible:outline-none">{activeTab === 'site-reviews' && <ReviewManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
                                 {(isSuperAdmin || allowedTabs.includes('notifications')) && (
                                     <>
-                                        <TabsContent value="notifications" className="mt-0 focus-visible:outline-none">{activeTab === 'notifications' && <NotificationManager />}</TabsContent>
-                                        <TabsContent value="announcements" className="mt-0 focus-visible:outline-none">{activeTab === 'announcements' && <AnnouncementManager />}</TabsContent>
+                                        <TabsContent value="notifications" className="mt-0 focus-visible:outline-none">{activeTab === 'notifications' && <NotificationManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
+                                        <TabsContent value="announcements" className="mt-0 focus-visible:outline-none">{activeTab === 'announcements' && <AnnouncementManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
                                     </>
                                 )}
-                                <TabsContent value="sub-admins" className="mt-0 focus-visible:outline-none">{activeTab === 'sub-admins' && <SubAdminManager />}</TabsContent>
+                                <TabsContent value="sub-admins" className="mt-0 focus-visible:outline-none">{activeTab === 'sub-admins' && <SubAdminManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
                                 {(isSuperAdmin || allowedTabs.includes('security')) && (
-                                    <TabsContent value="security" className="mt-0 focus-visible:outline-none">{activeTab === 'security' && <SecurityMonitor />}</TabsContent>
+                                    <TabsContent value="security" className="mt-0 focus-visible:outline-none">{activeTab === 'security' && <SecurityMonitor isSuperAdmin={isSuperAdmin} />}</TabsContent>
                                 )}
                                 {(isSuperAdmin || allowedTabs.includes('system-config')) && (
-                                    <TabsContent value="system-config" className="mt-0 focus-visible:outline-none">{activeTab === 'system-config' && <SystemConfig />}</TabsContent>
+                                    <TabsContent value="system-config" className="mt-0 focus-visible:outline-none">{activeTab === 'system-config' && <SystemConfig permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
                                 )}
                                 <TabsContent value="seo-health" className="mt-0 focus-visible:outline-none">{activeTab === 'seo-health' && <SEOHealthMonitor />}</TabsContent>
                                 </Suspense>
@@ -1627,7 +1682,7 @@ export default function Admin() {
                                                                 <span className="truncate mr-2">{q.question_text}</span>
                                                                 <div className="flex gap-1.5 shrink-0">
                                                                     {q.media?.type === 'image' && <ImageIcon className="w-3 h-3 text-indigo-400" />}
-                                                                    {(q.media?.type === 'chart' || q.media?.type === 'graph' || q.media?.type === 'pie') && <ChartIcon className="w-3 h-3 text-emerald-400" />}
+                                                                    {(q.media?.type === 'chart' || q.media?.type === 'graph' || q.media?.type === 'pie') && <Activity className="w-3 h-3 text-emerald-400" />}
                                                                     {q.media?.type === 'table' && <TableIcon className="w-3 h-3 text-amber-400" />}
                                                                     {q.media?.type === 'diagram' && <Layers className="w-3 h-3 text-rose-400" />}
                                                                 </div>

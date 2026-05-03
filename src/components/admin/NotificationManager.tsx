@@ -46,7 +46,8 @@ const EXAM_OPTIONS = [
     { id: 'ielts-academic', name: 'IELTS' }
 ];
 
-export default function NotificationManager() {
+export default function NotificationManager({ permissions, isSuperAdmin }: { permissions?: any, isSuperAdmin?: boolean }) {
+    const canBroadcast = isSuperAdmin || permissions?.can_broadcast === true;
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -571,6 +572,13 @@ export default function NotificationManager() {
                         <div className="flex gap-4">
                             <Button
                                 disabled={isSubmitting}
+                                onClick={(e) => {
+                                    if (!canBroadcast) {
+                                        e.preventDefault();
+                                        toast.error("Broadcast restricted by super admin.");
+                                        return;
+                                    }
+                                }}
                                 className="flex-1 bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-12 font-black uppercase tracking-widest text-xs gap-2"
                             >
                                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
@@ -634,7 +642,13 @@ export default function NotificationManager() {
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
-                                                onClick={() => handleSendPush(notif)}
+                                                onClick={() => {
+                                                    if (!canBroadcast) {
+                                                        toast.error("Action Restricted: Not allowed by super admin.");
+                                                        return;
+                                                    }
+                                                    handleSendPush(notif);
+                                                }}
                                                 disabled={isSubmitting}
                                                 className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
                                                 title="Re-send Push Notification"
@@ -642,21 +656,39 @@ export default function NotificationManager() {
                                                 <Bell className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleEdit(notif)}
+                                                onClick={() => {
+                                                    if (!canBroadcast) {
+                                                        toast.error("Action Restricted: Not allowed by super admin.");
+                                                        return;
+                                                    }
+                                                    handleEdit(notif);
+                                                }}
                                                 className="p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors"
                                                 title="Edit"
                                             >
                                                 <Pencil className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => toggleStatus(notif.id, notif.is_active)}
+                                                onClick={() => {
+                                                    if (!canBroadcast) {
+                                                        toast.error("Action Restricted: Not allowed by super admin.");
+                                                        return;
+                                                    }
+                                                    toggleStatus(notif.id, notif.is_active);
+                                                }}
                                                 className={`p-2 rounded-lg transition-colors ${notif.is_active ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
                                                 title={notif.is_active ? "Mark as Inactive" : "Mark as Active"}
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(notif.id)}
+                                                onClick={() => {
+                                                    if (!canBroadcast) {
+                                                        toast.error("Action Restricted: Not allowed by super admin.");
+                                                        return;
+                                                    }
+                                                    handleDelete(notif.id);
+                                                }}
                                                 className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                                                 title="Delete"
                                             >

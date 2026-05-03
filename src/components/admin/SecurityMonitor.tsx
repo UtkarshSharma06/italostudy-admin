@@ -33,7 +33,7 @@ interface SecurityAlert {
     ip_data?: string; // Extracted from description if needed
 }
 
-export default function SecurityMonitor() {
+export default function SecurityMonitor({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
     const [bannedIPs, setBannedIPs] = useState<BannedIP[]>([]);
     const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +61,13 @@ export default function SecurityMonitor() {
                 .limit(20);
 
             if (notifError) throw notifError;
-            setAlerts(notifications || []);
+            
+            // Filter alerts: Sub-admins don't see IP Overlap alerts
+            const filteredNotifications = isSuperAdmin 
+                ? notifications 
+                : (notifications || []).filter(n => n.title !== 'Security Alert: IP Overlap');
+
+            setAlerts(filteredNotifications);
 
         } catch (error: unknown) {
             toast({

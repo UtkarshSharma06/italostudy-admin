@@ -55,7 +55,12 @@ interface MarketingLead {
     created_at: string;
 }
 
-export default function UserManager() {
+export default function UserManager({ permissions, isSuperAdmin }: { permissions?: any, isSuperAdmin?: boolean }) {
+    // Default permissions if not provided (fallback for super-admin logic)
+    const canViewPII = isSuperAdmin || permissions?.can_view_pii === true;
+    const canDelete = isSuperAdmin || permissions?.can_delete === true;
+    const canEdit = isSuperAdmin || permissions?.can_edit === true;
+    const canExport = isSuperAdmin || permissions?.can_export === true;
     const [users, setUsers] = useState<Profile[]>([]);
     const [leads, setLeads] = useState<MarketingLead[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -354,7 +359,22 @@ export default function UserManager() {
                                         <Copy className="w-2.5 h-2.5 ml-1 opacity-50" />
                                     </div>
                                     <span className="font-mono text-xs opacity-70">@{user.username || 'user'}</span>
-                                    {user.email && <span className="text-xs opacity-40">• {user.email}</span>}
+                                    {user.email && (
+                                        <span 
+                                            className={cn("text-xs opacity-40", !canViewPII && "cursor-help")}
+                                            onClick={() => {
+                                                if (!canViewPII) {
+                                                    toast({ 
+                                                        title: "Access Restricted", 
+                                                        description: "Viewing full PII (Email) is not allowed by super admin.", 
+                                                        variant: "destructive" 
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            {canViewPII ? user.email : user.email.replace(/(.{3}).*@/, '$1***@')}
+                                        </span>
+                                    )}
                                     {user.phone_number && (
                                         <div 
                                             className="flex items-center gap-1 font-mono text-[9px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer hover:bg-slate-200 transition-colors"
@@ -369,7 +389,20 @@ export default function UserManager() {
                                     {user.last_ip && (
                                         <div className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded text-[9px] font-bold text-indigo-600/70">
                                             <Globe className="w-3 h-3" />
-                                            {user.last_ip}
+                                            <span
+                                                className={cn("text-[9px] font-bold", !canViewPII && "cursor-help")}
+                                                onClick={() => {
+                                                    if (!canViewPII) {
+                                                        toast({ 
+                                                            title: "Access Restricted", 
+                                                            description: "Viewing IP addresses is not allowed by super admin.", 
+                                                            variant: "destructive" 
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                {canViewPII ? user.last_ip : '***.***.***.***'}
+                                            </span>
                                             {user.country && <span className="ml-1 opacity-80 decoration-dotted underline underline-offset-2">({user.country})</span>}
                                         </div>
                                     )}
@@ -412,7 +445,13 @@ export default function UserManager() {
                                 variant={user.is_banned ? "default" : "ghost"}
                                 size="sm"
                                 className={user.is_banned ? "bg-emerald-600 hover:bg-emerald-700" : "text-destructive hover:bg-destructive/10"}
-                                onClick={() => handleToggleBan(user.id, user.is_banned, user.display_name || user.username || 'User')}
+                                onClick={() => {
+                                    if (!canEdit) {
+                                        toast({ title: "Access Denied", description: "Modifying user status is not allowed by super admin.", variant: "destructive" });
+                                        return;
+                                    }
+                                    handleToggleBan(user.id, user.is_banned, user.display_name || user.username || 'User');
+                                }}
                                 disabled={user.role === 'admin'}
                             >
                                 {user.is_banned ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
@@ -424,7 +463,13 @@ export default function UserManager() {
                                 variant="ghost"
                                 size="icon"
                                 className="text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                onClick={() => handleDeleteUser(user.id, user.display_name || user.username || 'User')}
+                                onClick={() => {
+                                    if (!canDelete) {
+                                        toast({ title: "Access Denied", description: "Deleting users is not allowed by super admin.", variant: "destructive" });
+                                        return;
+                                    }
+                                    handleDeleteUser(user.id, user.display_name || user.username || 'User');
+                                }}
                                 disabled={user.role === 'admin'}
                                 title="Permanently Delete User"
                             >
@@ -437,7 +482,13 @@ export default function UserManager() {
                                     variant="ghost"
                                     size="icon"
                                     className="text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                    onClick={() => handleBanIP(user.last_ip!, user.display_name || user.username || 'User')}
+                                    onClick={() => {
+                                        if (!canDelete) {
+                                            toast({ title: "Access Denied", description: "IP Blocking is not allowed by super admin.", variant: "destructive" });
+                                            return;
+                                        }
+                                        handleBanIP(user.last_ip!, user.display_name || user.username || 'User');
+                                    }}
                                     disabled={user.role === 'admin'}
                                     title="Block this IP Address"
                                 >
@@ -616,7 +667,13 @@ export default function UserManager() {
 
                         {activeTab === 'marketing' && (
                             <Button
-                                onClick={handleCopyAllEmails}
+                                onClick={() => {
+                                    if (!canExport) {
+                                        toast({ title: "Access Denied", description: "Exporting data lists is not allowed by super admin.", variant: "destructive" });
+                                        return;
+                                    }
+                                    handleCopyAllEmails();
+                                }}
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-[10px] tracking-widest h-10 px-6 rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none"
                             >
                                 <Copy className="w-3.5 h-3.5 mr-2" /> Copy All Emails

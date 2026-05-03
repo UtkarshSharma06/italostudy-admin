@@ -25,7 +25,8 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-export default function ConsultantManager() {
+export default function ConsultantManager({ permissions, isSuperAdmin }: { permissions?: any, isSuperAdmin?: boolean }) {
+    const canManageStaff = isSuperAdmin || permissions?.can_manage_staff === true;
     const [consultants, setConsultants] = useState<any[]>([]);
     const [applications, setApplications] = useState<any[]>([]);
     const [accessCodes, setAccessCodes] = useState<any[]>([]);
@@ -291,7 +292,13 @@ export default function ConsultantManager() {
 
                                 <div className="flex gap-2">
                                     <Button
-                                        onClick={() => approveApplication(app.id, app.user_id)}
+                                        onClick={() => {
+                                            if (!canManageStaff) {
+                                                toast({ title: "Access Denied", description: "Not allowed by super admin.", variant: "destructive" });
+                                                return;
+                                            }
+                                            approveApplication(app.id, app.user_id);
+                                        }}
                                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                                     >
                                         <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -299,6 +306,10 @@ export default function ConsultantManager() {
                                     </Button>
                                     <Button
                                         onClick={() => {
+                                            if (!canManageStaff) {
+                                                toast({ title: "Access Denied", description: "Not allowed by super admin.", variant: "destructive" });
+                                                return;
+                                            }
                                             if (window.confirm(`Reject application from ${app.full_name}?`)) {
                                                 rejectApplication(app.id);
                                             }
@@ -389,6 +400,10 @@ export default function ConsultantManager() {
                                                 size="sm"
                                                 className="flex-1 border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200"
                                                 onClick={() => {
+                                                    if (!canManageStaff) {
+                                                        toast({ title: "Access Denied", description: "Revoking access is restricted to super admins.", variant: "destructive" });
+                                                        return;
+                                                    }
                                                     if (window.confirm(`Are you sure you want to REVOKE access for ${c.display_name}? They will lose all consultant privileges.`)) {
                                                         removeConsultant(c.id);
                                                     }
@@ -425,7 +440,13 @@ export default function ConsultantManager() {
                                     className="bg-white border-indigo-100 focus:ring-indigo-500 rounded-xl"
                                 />
                                 <Button
-                                    onClick={generateCode}
+                                    onClick={() => {
+                                        if (!canManageStaff) {
+                                            toast({ title: "Access Denied", description: "Not allowed by super admin.", variant: "destructive" });
+                                            return;
+                                        }
+                                        generateCode();
+                                    }}
                                     disabled={isGenerating}
                                     className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl whitespace-nowrap"
                                 >
