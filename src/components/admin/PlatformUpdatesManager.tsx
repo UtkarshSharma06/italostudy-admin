@@ -66,6 +66,7 @@ interface HeroFeature {
     status_text: string;
     progress: number;
     icon: string;
+    last_updated_override?: string;
 }
 
 interface Testimonial {
@@ -122,7 +123,7 @@ export default function PlatformStatusHub() {
     const [config, setConfig] = useState<PlatformConfig>({
         current_session_text: '',
         live_status_percentage: 0,
-        hero_feature_json: { title: '', description: '', tags: [], status_text: '', progress: 0, icon: 'brain' },
+        hero_feature_json: { title: '', description: '', tags: [], status_text: '', progress: 0, icon: 'brain', last_updated_override: '' },
         testimonial_json: { quote: '', author: '', role: '', avatar_url: '' }
     });
 
@@ -144,10 +145,10 @@ export default function PlatformStatusHub() {
             if (systemsRes.data) setSystems(systemsRes.data as any);
             if (roadmapRes.data) setRoadmap(roadmapRes.data as any);
             if (configRes.data) setConfig({
-                current_session_text: configRes.data.current_session_text,
-                live_status_percentage: configRes.data.live_status_percentage,
-                hero_feature_json: configRes.data.hero_feature_json || config.hero_feature_json,
-                testimonial_json: configRes.data.testimonial_json || config.testimonial_json
+                current_session_text: configRes.data.current_session_text || '',
+                live_status_percentage: configRes.data.live_status_percentage || 0,
+                hero_feature_json: (configRes.data.hero_feature_json as unknown as HeroFeature) || config.hero_feature_json,
+                testimonial_json: (configRes.data.testimonial_json as unknown as Testimonial) || config.testimonial_json
             });
         } catch (err) {
             console.error("Error fetching status hub data:", err);
@@ -230,8 +231,8 @@ export default function PlatformStatusHub() {
             .update({
                 current_session_text: config.current_session_text,
                 live_status_percentage: config.live_status_percentage,
-                hero_feature_json: config.hero_feature_json,
-                testimonial_json: config.testimonial_json
+                hero_feature_json: config.hero_feature_json as any,
+                testimonial_json: config.testimonial_json as any
             })
             .eq('id', 'global');
 
@@ -499,6 +500,16 @@ export default function PlatformStatusHub() {
                                         <Label className="text-[10px] font-black uppercase text-slate-400">Status Sub-text</Label>
                                         <Input value={config.hero_feature_json.status_text} onChange={e => setConfig({...config, hero_feature_json: {...config.hero_feature_json, status_text: e.target.value}})} className="rounded-xl h-12 font-bold" />
                                     </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400">Manual Last Updated Date (e.g. 2026-03-31)</Label>
+                                    <Input 
+                                        type="date" 
+                                        value={config.hero_feature_json.last_updated_override || ''} 
+                                        onChange={e => setConfig({...config, hero_feature_json: {...config.hero_feature_json, last_updated_override: e.target.value}})} 
+                                        className="rounded-xl h-12 font-bold" 
+                                    />
+                                    <p className="text-[9px] text-slate-400 font-medium ml-1 mt-1 italic">If left blank, the system will use the actual last deployment date.</p>
                                 </div>
                             </div>
                             <div className="space-y-6">

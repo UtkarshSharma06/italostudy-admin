@@ -638,15 +638,57 @@ export default function UserManager() {
 
                     <TabsContent value="marketing" className="mt-0">
                         <div className="bg-white dark:bg-card p-8 rounded-[2rem] border-2 border-slate-100 dark:border-border shadow-sm">
-                            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 mb-6 uppercase tracking-widest flex items-center gap-2">
-                                <Users className="w-4 h-4 text-indigo-500" />
-                                Marketing Email List ({users.filter(u => u.email).length})
-                            </h4>
-                            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 font-mono text-xs leading-relaxed break-all select-all h-[400px] overflow-y-auto">
-                                {users.filter(u => u.email).map((u, i, arr) => (
-                                    <span key={u.id} className="text-slate-600 dark:text-slate-400">
-                                        {u.email}{i < arr.length - 1 ? ', ' : ''}
-                                    </span>
+                            <div className="flex items-center justify-between mb-8">
+                                <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-indigo-500" />
+                                    Marketing Email List ({users.filter(u => u.email).length})
+                                </h4>
+                                <Button
+                                    onClick={handleCopyAllEmails}
+                                    variant="outline"
+                                    className="border-indigo-100 text-indigo-600 hover:bg-indigo-50 font-black uppercase text-[10px] tracking-widest h-9 px-4 rounded-xl"
+                                >
+                                    <Copy className="w-3.5 h-3.5 mr-2" /> Copy All Addresses
+                                </Button>
+                            </div>
+
+                            <div className="space-y-8 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+                                {Object.entries(
+                                    users.filter(u => u.email).reduce((acc, user) => {
+                                        const country = user.country || 'Unknown';
+                                        if (!acc[country]) acc[country] = [];
+                                        if (!acc[country].includes(user.email)) {
+                                            acc[country].push(user.email);
+                                        }
+                                        return acc;
+                                    }, {} as Record<string, string[]>)
+                                ).sort(([a], [b]) => a === 'Unknown' ? 1 : b === 'Unknown' ? -1 : a.localeCompare(b)).map(([country, emails]) => (
+                                    <div key={country} className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                                                    <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                                                </div>
+                                                <div>
+                                                    <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-slate-100">
+                                                        {country}
+                                                    </h5>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase">{emails.length} active targets</p>
+                                                </div>
+                                            </div>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => copyToClipboard(emails.join(', '), `${country} Emails`)}
+                                                className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                                            >
+                                                <Copy className="w-3 h-3 mr-1.5" /> Copy List
+                                            </Button>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 font-mono text-[10px] leading-relaxed break-all select-all text-slate-600 dark:text-slate-400">
+                                            {emails.join(', ')}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         </div>
