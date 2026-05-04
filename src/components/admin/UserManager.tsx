@@ -55,6 +55,31 @@ interface MarketingLead {
     created_at: string;
 }
 
+const getContinent = (countryName: string | null): string => {
+    if (!countryName) return 'Other / Unknown';
+    const c = countryName.toLowerCase().trim();
+    
+    // Europe
+    if (['italy', 'uk', 'united kingdom', 'germany', 'france', 'spain', 'poland', 'romania', 'netherlands', 'belgium', 'greece', 'portugal', 'sweden', 'hungary', 'austria', 'switzerland', 'bulgaria', 'denmark', 'finland', 'slovakia', 'ireland', 'croatia', 'lithuania', 'slovenia', 'latvia', 'estonia', 'cyprus', 'luxembourg', 'malta', 'norway', 'iceland', 'ukraine', 'russia', 'turkey', 'serbia', 'albania', 'georgia', 'armenia', 'azerbaijan'].some(x => c.includes(x))) return 'Europe';
+    
+    // Asia
+    if (['india', 'china', 'pakistan', 'indonesia', 'bangladesh', 'japan', 'philippines', 'vietnam', 'iran', 'thailand', 'myanmar', 'south korea', 'iraq', 'afghanistan', 'saudi arabia', 'uzbekistan', 'malaysia', 'yemen', 'nepal', 'north korea', 'sri lanka', 'kazakhstan', 'syria', 'cambodia', 'jordan', 'united arab emirates', 'uae', 'tajikistan', 'israel', 'laos', 'kyrgyzstan', 'lebanon', 'singapore', 'oman', 'kuwait', 'mongolia', 'qatar', 'bahrain', 'timor-leste', 'bhutan', 'maldives', 'brunei'].some(x => c.includes(x))) return 'Asia';
+    
+    // Africa
+    if (['nigeria', 'ethiopia', 'egypt', 'congo', 'tanzania', 'south africa', 'kenya', 'uganda', 'algeria', 'sudan', 'morocco', 'angola', 'ghana', 'madagascar', 'cameroon', 'ivory coast', 'niger', 'burkina faso', 'mali', 'malawi', 'zambia', 'senegal', 'chad', 'somalia', 'zimbabwe', 'guinea', 'rwanda', 'benin', 'burundi', 'tunisia', 'south sudan', 'togo', 'sierra leone', 'libya', 'liberia', 'central african republic', 'mauritania', 'eritrea', 'namibia', 'gambia', 'botswana', 'gabon', 'lesotho', 'guinea-bissau', 'equatorial guinea', 'mauritius', 'eswatini', 'djibouti', 'comoros', 'cabo verde', 'sao tome and principe', 'seychelles'].some(x => c.includes(x))) return 'Africa';
+    
+    // North America
+    if (['usa', 'united states', 'canada', 'mexico', 'guatemala', 'cuba', 'haiti', 'dominican republic', 'honduras', 'nicaragua', 'el salvador', 'costa rica', 'panama', 'jamaica', 'trinidad', 'bahamas', 'belize', 'barbados', 'saint lucia', 'saint vincent', 'grenada', 'antigua', 'dominica', 'saint kitts'].some(x => c.includes(x))) return 'North America';
+    
+    // South America
+    if (['brazil', 'colombia', 'argentina', 'peru', 'venezuela', 'chile', 'ecuador', 'bolivia', 'paraguay', 'uruguay', 'guyana', 'suriname'].some(x => c.includes(x))) return 'South America';
+    
+    // Oceania
+    if (['australia', 'new zealand', 'papua new guinea', 'fiji', 'solomon islands', 'micronesia', 'vanuatu', 'samoa', 'kiribati', 'tonga', 'marshall islands', 'palau', 'tuvalu', 'nauru'].some(x => c.includes(x))) return 'Oceania';
+    
+    return 'Other / Unknown';
+};
+
 export default function UserManager({ permissions, isSuperAdmin }: { permissions?: any, isSuperAdmin?: boolean }) {
     // Default permissions if not provided (fallback for super-admin logic)
     const canViewPII = isSuperAdmin || permissions?.can_view_pii === true;
@@ -712,15 +737,15 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
                             <div className="space-y-8 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
                                 {Object.entries(
                                     users.filter(u => u.email).reduce((acc, user) => {
-                                        const country = user.country || 'Unknown';
-                                        if (!acc[country]) acc[country] = [];
-                                        if (!acc[country].includes(user.email)) {
-                                            acc[country].push(user.email);
+                                        const continent = getContinent(user.country);
+                                        if (!acc[continent]) acc[continent] = [];
+                                        if (!acc[continent].includes(user.email)) {
+                                            acc[continent].push(user.email);
                                         }
                                         return acc;
                                     }, {} as Record<string, string[]>)
-                                ).sort(([a], [b]) => a === 'Unknown' ? 1 : b === 'Unknown' ? -1 : a.localeCompare(b)).map(([country, emails]) => (
-                                    <div key={country} className="space-y-3">
+                                ).sort(([a], [b]) => a === 'Other / Unknown' ? 1 : b === 'Other / Unknown' ? -1 : a.localeCompare(b)).map(([continent, emails]) => (
+                                    <div key={continent} className="space-y-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
@@ -728,7 +753,7 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
                                                 </div>
                                                 <div>
                                                     <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-slate-100">
-                                                        {country}
+                                                        {continent}
                                                     </h5>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase">{emails.length} active targets</p>
                                                 </div>
@@ -736,7 +761,10 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                onClick={() => copyToClipboard(emails.join(', '), `${country} Emails`)}
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(emails.join(', '));
+                                                    toast({ title: `${continent} list copied!` });
+                                                }}
                                                 className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
                                             >
                                                 <Copy className="w-3 h-3 mr-1.5" /> Copy List
