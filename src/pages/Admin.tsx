@@ -56,7 +56,8 @@ import {
     CheckCircle2,
     Lock,
     Moon,
-    Sun
+    Sun,
+    TrendingUp
 } from 'lucide-react';
 import { generateMockTestPDF } from '@/utils/pdfExport';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -79,6 +80,7 @@ const MockSeriesManager = lazy(() => import('@/components/admin/MockSeriesManage
 const MockResultsViewer = lazy(() => import('@/components/admin/MockResultsViewer'));
 const SubAdminManager = lazy(() => import('@/components/admin/SubAdminManager'));
 const AnalyticsOverview = lazy(() => import('@/components/admin/AnalyticsOverview'));
+const InvestorDashboard = lazy(() => import('@/components/admin/InvestorDashboard'));
 const MarketingAnalytics = lazy(() => import('@/components/admin/MarketingAnalytics'));
 const SystemConfig = lazy(() => import('@/components/admin/SystemConfig'));
 const SecurityMonitor = lazy(() => import('@/components/admin/SecurityMonitor'));
@@ -342,6 +344,7 @@ export default function Admin() {
     const [availableExams, setAvailableExams] = useState<any[]>([]);
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 1024 : false);
     const [pdfProgressMessage, setPdfProgressMessage] = useState<string>('');
+    const [sessionSubTab, setSessionSubTab] = useState('create');
 
     // Form state for creating/editing sessions
     const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -742,6 +745,7 @@ export default function Admin() {
         } else {
             toast({ title: "Success", description: editingSessionId ? "Session updated." : "New session created." });
             handleResetForm();
+            fetchSessions();
         }
         setIsSubmitting(false);
     };
@@ -756,7 +760,10 @@ export default function Admin() {
         if (!confirm('Are you sure you want to delete this session?')) return;
         const { error } = await supabase.from('mock_sessions').delete().eq('id', id);
         if (error) toast({ variant: "destructive", title: "Error", description: error.message });
-        else toast({ title: "Deleted", description: "Session removed." });
+        else {
+            toast({ title: "Deleted", description: "Session removed." });
+            fetchSessions();
+        }
     };
 
     const handleEditClick = (session: MockSession) => {
@@ -788,6 +795,7 @@ export default function Admin() {
             is_sections_locked: session.is_sections_locked ?? true,
             section_timing_mode: session.section_timing_mode ?? 'section',
         });
+        setSessionSubTab('create');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -1009,7 +1017,7 @@ export default function Admin() {
     };
 
     const navigationGroups = [
-        { title: "Analytics", items: [{ id: "analytics", label: "Dashboard", icon: BarChart3 }, { id: "marketing", label: "Marketing", icon: Activity }, { id: "seo-health", label: "SEO Health", icon: Activity }, { id: "mock-results", label: "Results", icon: Trophy }] },
+        { title: "Analytics", items: [{ id: "analytics", label: "Dashboard", icon: BarChart3 }, { id: "investor", label: "Investor KPIs", icon: TrendingUp }, { id: "marketing", label: "Marketing", icon: Activity }, { id: "seo-health", label: "SEO Health", icon: Activity }, { id: "mock-results", label: "Results", icon: Trophy }] },
         { title: "Finance", items: [{ id: "payments", label: "Payments", icon: Wallet }, { id: "pricing", label: "Pricing", icon: Zap }, { id: "coupons", label: "Coupons", icon: Ticket }] },
         { title: "Management", items: [{ id: "sessions", label: "Sessions", icon: Calendar }, { id: "series", label: "Mock Series", icon: Layers }, { id: "reports", label: "Question Reports", icon: AlertTriangle }, { id: "qa-reports", label: "Q&A Reports", icon: ShieldAlert }, { id: "mock-evals", label: "Mock Grade", icon: ShieldCheck }, { id: "writing-evals", label: "Essay Grade", icon: PenTool }, { id: "site-reviews", label: "Site Reviews", icon: Star }] },
         { title: "Material" as any, items: [{ id: "exam-manager", label: "Exam Model", icon: Layers }, { id: "learning", label: "Lessons", icon: Brain }, { id: "reading", label: "Reading", icon: BookOpen }, { id: "listening", label: "Listening", icon: Headphones }, { id: "writing-tasks", label: "Tasks", icon: Pencil }, { id: "practice", label: "Practice Bank", icon: Layers }, { id: "booklet", label: "Booklet Generator", icon: BookOpen }, { id: "3d-labs", label: "Labs", icon: Box }, { id: "resources", label: "Resources", icon: FileText }, { id: "blog", label: "Blog", icon: Newspaper }, { id: "page-content", label: "Page Content", icon: FileEdit }, { id: "status-hub", label: "Status Hub", icon: Activity }] },
@@ -1150,7 +1158,7 @@ export default function Admin() {
                         </div>
                     </header>
 
-                    <div className="flex-1 overflow-y-auto scroll-smooth py-6 lg:py-10 px-4 lg:px-6 xl:px-10">
+                    <div className="flex-1 overflow-y-auto scroll-smooth pt-6 lg:pt-10 pb-24 lg:pb-32 px-4 lg:px-6 xl:px-10">
                         <div className="w-full mx-auto">
                             <Tabs value={activeTab} className="space-y-0 no-tabs-list">
                                 <TabsList className="hidden">
@@ -1163,239 +1171,307 @@ export default function Admin() {
                                 <TabsContent value="exam-manager" className="mt-0 focus-visible:outline-none">{activeTab === 'exam-manager' && <ExamManager />}</TabsContent>
                                 <TabsContent value="learning" className="mt-0 focus-visible:outline-none">{activeTab === 'learning' && <LearningManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
                                 <TabsContent value="analytics" className="mt-0 focus-visible:outline-none">{activeTab === 'analytics' && <AnalyticsOverview />}</TabsContent>
+                                <TabsContent value="investor" className="mt-0 focus-visible:outline-none">{activeTab === 'investor' && <InvestorDashboard />}</TabsContent>
                                 <TabsContent value="marketing" className="mt-0 focus-visible:outline-none">{activeTab === 'marketing' && <MarketingAnalytics />}</TabsContent>
                                 <TabsContent value="payments" className="mt-0 focus-visible:outline-none">{activeTab === 'payments' && <PaymentsManager />}</TabsContent>
                                 <TabsContent value="coupons" className="mt-0 focus-visible:outline-none">{activeTab === 'coupons' && <CouponsManager />}</TabsContent>
                                 <TabsContent value="mock-results" className="mt-0 focus-visible:outline-none">{activeTab === 'mock-results' && <MockResultsViewer />}</TabsContent>
                                 <TabsContent value="sessions" className="mt-0 focus-visible:outline-none">
                                     {activeTab === 'sessions' && (
-                                    <div className="grid lg:grid-cols-3 gap-8">
-                                        <div className="lg:col-span-1">
-                                            <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm sticky top-8">
-                                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">{editingSessionId ? <Pencil className="w-5 h-5 text-indigo-500" /> : <Plus className="w-5 h-5" />}{editingSessionId ? 'Edit Session' : 'New Session'}</h2>
-                                                <form onSubmit={handleSaveSession} className="space-y-4">
-                                                    <div className="space-y-2"><Label>Title</Label><Input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required /></div>
-                                                    <div className="space-y-2"><Label>Description</Label><Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="e.g. High-fidelity practice exam..." /></div>
-                                                    <div className="grid grid-cols-1 gap-4">
-                                                        <DateTimePicker
-                                                            label="Start Time"
-                                                            value={formData.start_time}
-                                                            onChange={(value) => setFormData({ ...formData, start_time: value })}
-                                                            required
-                                                        />
-                                                        <DateTimePicker
-                                                            label="End Time"
-                                                            value={formData.end_time}
-                                                            onChange={(value) => setFormData({ ...formData, end_time: value })}
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <div className="space-y-2">
-                                                            <Label>Exam Type</Label>
-                                                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.exam_type} onChange={e => {
-                                                                    const slug = e.target.value;
-                                                                    const exam = availableExams.find(ex => ex.slug === slug);
-                                                                    const duration = (exam as any)?.duration_minutes || 100;
-                                                                    
-                                                                    // IMAT-Specific Logic: Default to Total Time and Unlocked
-                                                                    const isImat = slug.includes('imat');
-                                                                    setFormData({ 
-                                                                        ...formData, 
-                                                                        exam_type: slug, 
-                                                                        duration,
-                                                                        is_sections_locked: isImat ? false : formData.is_sections_locked,
-                                                                        section_timing_mode: isImat ? 'total' : formData.section_timing_mode
-                                                                    });
-                                                                }}>
-                                                                {availableExams.map(exam => (
-                                                                    <option key={exam.id} value={exam.slug}>{exam.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Access Type</Label>
-                                                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.access_type} onChange={e => setFormData({ ...formData, access_type: e.target.value as any })}>
-                                                                <option value="open">Open Group</option><option value="request_required">Invitation Only</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <div className="space-y-2">
-                                                            <Label>Difficulty</Label>
-                                                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.difficulty} onChange={e => setFormData({ ...formData, difficulty: e.target.value as any })}>
-                                                                <option value="easy">Easy</option>
-                                                                <option value="medium">Medium</option>
-                                                                <option value="hard">Hard</option>
-                                                            </select>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Max Attempts</Label>
-                                                            <Input type="number" value={formData.max_attempts} onChange={e => setFormData({ ...formData, max_attempts: parseInt(e.target.value) || 1 })} />
-                                                        </div>
-                                                    </div>
-
-                                                    {formData.exam_type?.includes('ielts') && (
-                                                        <div className="pt-4 border-t border-slate-50 dark:border-slate-800 space-y-4">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Link Material <span className="text-rose-500">*</span></h4>
-                                                            <div className="space-y-3">
-                                                                <div className="space-y-1">
-                                                                    <Label className="text-[10px]">Reading Module</Label>
-                                                                    <select className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs" value={formData.reading_test_id} onChange={e => setFormData({ ...formData, reading_test_id: e.target.value })}>
-                                                                        <option value="">None Linked</option>
-                                                                        {readingTests.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                                                                    </select>
-                                                                </div>
-                                                                <div className="space-y-1">
-                                                                    <Label className="text-[10px]">Listening Module</Label>
-                                                                    <select className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs" value={formData.listening_test_id} onChange={e => setFormData({ ...formData, listening_test_id: e.target.value })}>
-                                                                        <option value="">None Linked</option>
-                                                                        {listeningTests.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                                                                    </select>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-3">
-                                                                    <div className="space-y-1">
-                                                                        <Label className="text-[10px]">Writing T1</Label>
-                                                                        <select className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs" value={formData.writing_task1_id} onChange={e => setFormData({ ...formData, writing_task1_id: e.target.value })}>
-                                                                            <option value="">None</option>
-                                                                            {writingTasks.filter(t => t.task_type === 'task1').map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                                                                        </select>
-                                                                    </div>
-                                                                    <div className="space-y-1">
-                                                                        <Label className="text-[10px]">Writing T2</Label>
-                                                                        <select className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs" value={formData.writing_task2_id} onChange={e => setFormData({ ...formData, writing_task2_id: e.target.value })}>
-                                                                            <option value="">None</option>
-                                                                            {writingTasks.filter(t => t.task_type === 'task2').map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                                                                        </select>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="space-y-3">
-                                                        <div className="flex items-center justify-between p-3.5 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-purple-100/50 dark:border-purple-800/30">
-                                                            <div>
-                                                                <p className="text-[10px] font-black uppercase text-purple-900 dark:text-purple-300 tracking-wider">Explorer Access</p>
-                                                                <p className="text-[8px] font-bold text-purple-600/70 dark:text-purple-400/70 uppercase">Allow free users to attempt this mock</p>
-                                                            </div>
-                                                            <Switch
-                                                                checked={formData.is_explorer_allowed}
-                                                                onCheckedChange={val => setFormData({ ...formData, is_explorer_allowed: val })}
-                                                            />
-                                                        </div>
-
-                                                        <div className="flex items-center justify-between p-3.5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100/50 dark:border-indigo-800/30">
-                                                            <div>
-                                                                <p className="text-[10px] font-black uppercase text-indigo-900 dark:text-indigo-300 tracking-wider">Lock Mock Sections</p>
-                                                                <p className="text-[8px] font-bold text-indigo-600/70 dark:text-indigo-400/70 uppercase">Prevent students from navigating back</p>
-                                                            </div>
-                                                            <Switch
-                                                                checked={formData.is_sections_locked}
-                                                                onCheckedChange={val => setFormData({ ...formData, is_sections_locked: val })}
-                                                            />
-                                                        </div>
-
-                                                        <div className="p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800/50">
-                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Timing Mode</Label>
-                                                            <div className="flex gap-2 mt-3">
-                                                                <Button 
-                                                                    type="button" 
-                                                                    variant={formData.section_timing_mode === 'section' ? 'default' : 'outline'}
-                                                                    className="flex-1 h-9 text-[9px] uppercase font-black tracking-widest rounded-xl transition-all"
-                                                                    onClick={() => setFormData({ ...formData, section_timing_mode: 'section' })}
-                                                                >
-                                                                    Sectional
-                                                                </Button>
-                                                                <Button 
-                                                                    type="button" 
-                                                                    variant={formData.section_timing_mode === 'total' ? 'default' : 'outline'}
-                                                                    className="flex-1 h-9 text-[9px] uppercase font-black tracking-widest rounded-xl transition-all"
-                                                                    onClick={() => setFormData({ ...formData, section_timing_mode: 'total' })}
-                                                                >
-                                                                    Total Time
-                                                                </Button>
-                                                            </div>
-                                                            <p className="text-[8px] font-bold text-slate-400 uppercase mt-2 italic">
-                                                                {formData.section_timing_mode === 'section' ? 
-                                                                    "Each section has its own timer. Forces move on 0." : 
-                                                                    "One total timer for all sections. Freedom to move."}
-                                                            </p>
-                                                            </div>
-                                                    </div>
-
-                                                    <div className="flex gap-2 pt-4">
-                                                        <Button type="button" variant="outline" className="flex-1" onClick={handleResetForm}>Clear</Button>
-                                                        <Button type="submit" className="flex-[2] bg-indigo-600 hover:bg-indigo-700" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="animate-spin" /> : editingSessionId ? 'Update' : 'Deploy'}</Button>
-                                                    </div>
-                                                </form>
+                                        <Tabs value={sessionSubTab} onValueChange={setSessionSubTab} className="space-y-6">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <TabsList className="bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                                    <TabsTrigger value="create" className="rounded-xl px-8 py-2.5 text-[10px] uppercase tracking-widest font-black data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all duration-300">
+                                                        {editingSessionId ? 'Edit Session' : 'Create Mock'}
+                                                    </TabsTrigger>
+                                                    <TabsTrigger value="groups" className="rounded-xl px-8 py-2.5 text-[10px] uppercase tracking-widest font-black data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all duration-300">
+                                                        Mock Groups
+                                                    </TabsTrigger>
+                                                </TabsList>
                                             </div>
-                                        </div>
-                                        <div className="lg:col-span-2 space-y-4">
-                                            {sessions.map(s => (
-                                                <div key={s.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="space-y-3 flex-1">
-                                                            <div>
-                                                                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-                                                                    {s.title}
-                                                                    <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500">
-                                                                        {s.exam_type}
-                                                                    </span>
-                                                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded-full text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5 border border-slate-200/50 dark:border-slate-700/50">
-                                                                        <UsersIcon className="w-3.5 h-3.5" />
-                                                                        {s.registration_count || 0} Registered
-                                                                    </span>
-                                                                    {s.is_explorer_allowed && (
-                                                                        <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5 border border-purple-200/50 dark:border-purple-800/50">
-                                                                            <ShieldCheck className="w-3.5 h-3.5" />
-                                                                            Explorer Access
-                                                                        </span>
-                                                                    )}
-                                                                    {s.is_sections_locked !== false && (
-                                                                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5 border border-slate-200/50 dark:border-slate-700/50">
-                                                                            <Lock className="w-3 h-3" />
-                                                                            Locked
-                                                                        </span>
-                                                                    )}
-                                                                    <span className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5 border border-indigo-100/50 dark:border-indigo-900/30">
-                                                                        <Clock className="w-3 h-3" />
-                                                                        {s.section_timing_mode === 'total' ? 'Total Time' : 'Sectional'}
-                                                                    </span>
-                                                                </h3>
-                                                                <p className="text-sm text-slate-500 mt-1 line-clamp-2">{s.description || 'Global session'}</p>
+
+                                            <TabsContent value="create" className="mt-0 focus-visible:outline-none">
+                                                <div className="max-w-4xl mx-auto">
+                                                    <div className="bg-white dark:bg-slate-900 p-8 md:p-10 lg:p-12 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+                                                        <h2 className="text-xl font-bold mb-8 flex items-center gap-2">
+                                                            {editingSessionId ? <Pencil className="w-5 h-5 text-indigo-500" /> : <Plus className="w-5 h-5" />}
+                                                            {editingSessionId ? 'Modify Session Details' : 'Deploy New Mock Session'}
+                                                        </h2>
+                                                        <form onSubmit={handleSaveSession} className="space-y-6">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Session Title</Label>
+                                                                    <Input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required className="h-12 rounded-xl" placeholder="e.g. IMAT 2024 Simulation" />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Exam Model</Label>
+                                                                    <select className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none" value={formData.exam_type} onChange={e => {
+                                                                        const slug = e.target.value;
+                                                                        const exam = availableExams.find(ex => ex.slug === slug);
+                                                                        const duration = (exam as any)?.duration_minutes || 100;
+                                                                        const isImat = slug.includes('imat');
+                                                                        setFormData({ 
+                                                                            ...formData, 
+                                                                            exam_type: slug, 
+                                                                            duration,
+                                                                            is_sections_locked: isImat ? false : formData.is_sections_locked,
+                                                                            section_timing_mode: isImat ? 'total' : formData.section_timing_mode
+                                                                        });
+                                                                    }}>
+                                                                        {availableExams.map(exam => (
+                                                                            <option key={exam.id} value={exam.slug}>{exam.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
                                                             </div>
 
-                                                            <div className="flex flex-wrap gap-4 pt-2">
-                                                                <div className="flex items-center gap-2 text-slate-400">
-                                                                    <Calendar className="w-3.5 h-3.5" />
-                                                                    <span className="text-[10px] font-bold uppercase tracking-wider">{new Date(s.start_time).toLocaleDateString()}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-2 text-slate-400">
-                                                                    <Clock className="w-3.5 h-3.5" />
-                                                                    <span className="text-[10px] font-bold uppercase tracking-wider">{new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(s.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                                </div>
-                                                                {s.exam_type?.includes('ielts') && (
-                                                                    <div className="flex items-center gap-2 text-indigo-500">
-                                                                        <Box className="w-3.5 h-3.5" />
-                                                                        <span className="text-[10px] font-bold uppercase tracking-wider">
-                                                                            {[s.reading_test_id, s.listening_test_id, s.writing_task1_id, s.writing_task2_id].filter(Boolean).length} Modules Linked
-                                                                        </span>
-                                                                    </div>
-                                                                )}
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</Label>
+                                                                <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Provide context about this session..." className="rounded-xl min-h-[100px]" />
                                                             </div>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => handleDownloadSessionPDF(s)} title="Download PDF"><FileDown className="w-4 h-4" /></Button>
-                                                            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => handleEditClick(s)}>Edit</Button>
-                                                            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setSelectedSession(s)}>Qs</Button>
-                                                            <Button variant="ghost" size="sm" className="rounded-xl text-rose-500 hover:bg-rose-50" onClick={() => handleDeleteSession(s.id)}>Delete</Button>
-                                                        </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <DateTimePicker
+                                                                    label="Start Time"
+                                                                    value={formData.start_time}
+                                                                    onChange={(value) => setFormData({ ...formData, start_time: value })}
+                                                                    required
+                                                                />
+                                                                <DateTimePicker
+                                                                    label="End Time"
+                                                                    value={formData.end_time}
+                                                                    onChange={(value) => setFormData({ ...formData, end_time: value })}
+                                                                    required
+                                                                />
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Access Type</Label>
+                                                                    <select className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" value={formData.access_type} onChange={e => setFormData({ ...formData, access_type: e.target.value as any })}>
+                                                                        <option value="open">Open Group</option><option value="request_required">Invitation Only</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Difficulty</Label>
+                                                                    <select className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" value={formData.difficulty} onChange={e => setFormData({ ...formData, difficulty: e.target.value as any })}>
+                                                                        <option value="easy">Easy</option>
+                                                                        <option value="medium">Medium</option>
+                                                                        <option value="hard">Hard</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Max Attempts</Label>
+                                                                    <Input type="number" value={formData.max_attempts} onChange={e => setFormData({ ...formData, max_attempts: parseInt(e.target.value) || 1 })} className="h-12 rounded-xl" />
+                                                                </div>
+                                                            </div>
+
+                                                            {formData.exam_type?.includes('ielts') && (
+                                                                <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+                                                                    <h4 className="text-[10px] font-black uppercase text-indigo-500 tracking-widest flex items-center gap-2">
+                                                                        <Layers className="w-4 h-4" /> Link IELTS Material
+                                                                    </h4>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-[9px] font-bold uppercase text-slate-400">Reading Module</Label>
+                                                                            <select className="flex h-10 w-full rounded-xl border border-input bg-background px-3 text-xs" value={formData.reading_test_id} onChange={e => setFormData({ ...formData, reading_test_id: e.target.value })}>
+                                                                                <option value="">None Linked</option>
+                                                                                {readingTests.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-[9px] font-bold uppercase text-slate-400">Listening Module</Label>
+                                                                            <select className="flex h-10 w-full rounded-xl border border-input bg-background px-3 text-xs" value={formData.listening_test_id} onChange={e => setFormData({ ...formData, listening_test_id: e.target.value })}>
+                                                                                <option value="">None Linked</option>
+                                                                                {listeningTests.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-[9px] font-bold uppercase text-slate-400">Writing Task 1</Label>
+                                                                            <select className="flex h-10 w-full rounded-xl border border-input bg-background px-3 text-xs" value={formData.writing_task1_id} onChange={e => setFormData({ ...formData, writing_task1_id: e.target.value })}>
+                                                                                <option value="">None</option>
+                                                                                {writingTasks.filter(t => t.task_type === 'task1').map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-[9px] font-bold uppercase text-slate-400">Writing Task 2</Label>
+                                                                            <select className="flex h-10 w-full rounded-xl border border-input bg-background px-3 text-xs" value={formData.writing_task2_id} onChange={e => setFormData({ ...formData, writing_task2_id: e.target.value })}>
+                                                                                <option value="">None</option>
+                                                                                {writingTasks.filter(t => t.task_type === 'task2').map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <div className="flex items-center justify-between p-4 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-purple-100/50 dark:border-purple-800/30">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase text-purple-900 dark:text-purple-300 tracking-wider">Explorer Access</p>
+                                                                        <p className="text-[8px] font-bold text-purple-600/70 dark:text-purple-400/70 uppercase">Allow free users to attempt</p>
+                                                                    </div>
+                                                                    <Switch checked={formData.is_explorer_allowed} onCheckedChange={val => setFormData({ ...formData, is_explorer_allowed: val })} />
+                                                                </div>
+
+                                                                <div className="flex items-center justify-between p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100/50 dark:border-indigo-800/30">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase text-indigo-900 dark:text-indigo-300 tracking-wider">Lock Sections</p>
+                                                                        <p className="text-[8px] font-bold text-indigo-600/70 dark:text-indigo-400/70 uppercase">Prevent back navigation</p>
+                                                                    </div>
+                                                                    <Switch checked={formData.is_sections_locked} onCheckedChange={val => setFormData({ ...formData, is_sections_locked: val })} />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="p-5 bg-slate-50/50 dark:bg-slate-800/30 rounded-3xl border border-slate-100 dark:border-slate-800/50">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Timing Configuration</Label>
+                                                                <div className="flex gap-3 mt-4">
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        variant={formData.section_timing_mode === 'section' ? 'default' : 'outline'}
+                                                                        className="flex-1 h-11 text-[10px] uppercase font-black tracking-widest rounded-xl transition-all"
+                                                                        onClick={() => setFormData({ ...formData, section_timing_mode: 'section' })}
+                                                                    >
+                                                                        Sectional
+                                                                    </Button>
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        variant={formData.section_timing_mode === 'total' ? 'default' : 'outline'}
+                                                                        className="flex-1 h-11 text-[10px] uppercase font-black tracking-widest rounded-xl transition-all"
+                                                                        onClick={() => setFormData({ ...formData, section_timing_mode: 'total' })}
+                                                                    >
+                                                                        Total Time
+                                                                    </Button>
+                                                                </div>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase mt-3 italic text-center">
+                                                                    {formData.section_timing_mode === 'section' ? 
+                                                                        "Sectional: Each part has its own timer. Auto-next on expiry." : 
+                                                                        "Total Time: Single clock for the entire mock. Flexible navigation."}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="flex gap-4 pt-6">
+                                                                <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl font-bold" onClick={handleResetForm}>Reset Form</Button>
+                                                                <Button type="submit" className="flex-[2] h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold" disabled={isSubmitting}>
+                                                                    {isSubmitting ? <Loader2 className="animate-spin" /> : editingSessionId ? 'Update Session' : 'Deploy Mock'}
+                                                                </Button>
+                                                            </div>
+                                                        </form>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                            </TabsContent>
+
+                                            <TabsContent value="groups" className="mt-0 focus-visible:outline-none">
+                                                {(() => {
+                                                    const grouped = sessions.reduce((acc, session) => {
+                                                        const type = session.exam_type || 'Other';
+                                                        if (!acc[type]) acc[type] = [];
+                                                        acc[type].push(session);
+                                                        return acc;
+                                                    }, {} as Record<string, MockSession[]>);
+                                                    
+                                                    const examTypes = Object.keys(grouped).sort();
+                                                    
+                                                    if (examTypes.length === 0) {
+                                                        return (
+                                                            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-800">
+                                                                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-6">
+                                                                    <Calendar className="w-8 h-8 text-slate-300" />
+                                                                </div>
+                                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No mock sessions deployed yet</p>
+                                                                <Button variant="ghost" className="mt-4 text-indigo-500 hover:text-indigo-600 font-bold" onClick={() => setSessionSubTab('create')}>Create Your First Mock</Button>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <Tabs defaultValue={examTypes[0]} className="space-y-8">
+                                                            <div className="flex flex-col gap-4">
+                                                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-2 flex items-center gap-3">
+                                                                    Select Exam Model
+                                                                    <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800" />
+                                                                </h3>
+                                                                <div className="overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
+                                                                    <TabsList className="inline-flex h-auto p-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-[1.25rem] border border-slate-200/50 dark:border-slate-700/50">
+                                                                        {examTypes.map(type => (
+                                                                            <TabsTrigger 
+                                                                                key={type} 
+                                                                                value={type}
+                                                                                className="rounded-xl px-6 py-3 text-[10px] uppercase tracking-widest font-black data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm transition-all whitespace-nowrap group/trigger"
+                                                                            >
+                                                                                {availableExams.find(e => e.slug === type)?.name || type.toUpperCase()}
+                                                                                <span className="ml-3 px-2 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-500 rounded-md text-[9px] group-data-[state=active]/trigger:bg-indigo-50 group-data-[state=active]/trigger:text-indigo-600 transition-colors">{grouped[type].length}</span>
+                                                                            </TabsTrigger>
+                                                                        ))}
+                                                                    </TabsList>
+                                                                </div>
+                                                            </div>
+
+                                                            {examTypes.map(type => (
+                                                                <TabsContent key={type} value={type} className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-3 duration-500">
+                                                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                                                        {grouped[type].map(s => (
+                                                                            <div key={s.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                                                                                <div className="flex justify-between items-start gap-6">
+                                                                                    <div className="space-y-5 flex-1">
+                                                                                        <div>
+                                                                                            <div className="flex items-center gap-2 mb-3">
+                                                                                                <span className={cn(
+                                                                                                    "text-[9px] font-black uppercase px-3 py-1 rounded-lg tracking-tighter",
+                                                                                                    s.access_type === 'open' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-amber-50 text-amber-600 border border-amber-100"
+                                                                                                )}>
+                                                                                                    {s.access_type === 'open' ? 'Open Access' : 'Invite Only'}
+                                                                                                </span>
+                                                                                                <span className="text-[9px] font-black uppercase px-3 py-1 bg-slate-50 text-slate-500 border border-slate-100 rounded-lg tracking-tighter">
+                                                                                                    {s.difficulty}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <h3 className="font-bold text-xl text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors leading-tight">{s.title}</h3>
+                                                                                            <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">{s.description || 'Global practice session'}</p>
+                                                                                        </div>
+
+                                                                                        <div className="grid grid-cols-2 gap-6 pt-2">
+                                                                                            <div className="flex items-center gap-3 text-slate-400">
+                                                                                                <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                                                                                                    <Calendar className="w-4 h-4" />
+                                                                                                </div>
+                                                                                                <div className="flex flex-col">
+                                                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Date</span>
+                                                                                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{new Date(s.start_time).toLocaleDateString()}</span>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-3 text-slate-400">
+                                                                                                <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                                                                                                    <UsersIcon className="w-4 h-4" />
+                                                                                                </div>
+                                                                                                <div className="flex flex-col">
+                                                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Students</span>
+                                                                                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{s.registration_count || 0} Registered</span>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex flex-col gap-2 shrink-0">
+                                                                                        <div className="flex gap-2">
+                                                                                            <Button variant="outline" size="icon" className="w-11 h-11 rounded-2xl border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all" onClick={() => handleEditClick(s)} title="Edit Session"><Pencil className="w-5 h-5" /></Button>
+                                                                                            <Button variant="outline" size="icon" className="w-11 h-11 rounded-2xl border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all" onClick={() => setSelectedSession(s)} title="Manage Questions"><Layers className="w-5 h-5" /></Button>
+                                                                                        </div>
+                                                                                        <div className="flex gap-2">
+                                                                                            <Button variant="outline" size="icon" className="w-11 h-11 rounded-2xl border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all" onClick={() => handleDownloadSessionPDF(s)} title="Download PDF"><FileDown className="w-5 h-5" /></Button>
+                                                                                            <Button variant="ghost" size="icon" className="w-11 h-11 rounded-2xl text-rose-400 hover:bg-rose-50 hover:text-rose-600 transition-all" onClick={() => handleDeleteSession(s.id)} title="Delete Session"><Trash2 className="w-5 h-5" /></Button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </TabsContent>
+                                                            ))}
+                                                        </Tabs>
+                                                    );
+                                                })()}
+                                            </TabsContent>
+
+                                        </Tabs>
                                     )}
                                 </TabsContent>
                                 {(isSuperAdmin || allowedTabs.includes('series')) && <TabsContent value="series" className="mt-0 focus-visible:outline-none">{activeTab === 'series' && <MockSeriesManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}

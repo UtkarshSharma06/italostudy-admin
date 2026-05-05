@@ -18,7 +18,9 @@ import {
     RefreshCw,
     AlertCircle,
     Globe,
-    Search
+    Search,
+    FileSpreadsheet,
+    ChevronDown
 } from 'lucide-react';
 import {
     AreaChart,
@@ -33,6 +35,7 @@ import {
     Cell
 } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
+import { generateExcelReport, type ReportTimeframe } from '@/utils/excelReportGenerator';
 
 interface DashboardStats {
     total_users: number;
@@ -55,6 +58,10 @@ export default function AnalyticsOverview() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportProgress, setExportProgress] = useState('');
+    const [exportTimeframe, setExportTimeframe] = useState<ReportTimeframe>('30d');
+    const [showExportMenu, setShowExportMenu] = useState(false);
 
     const fetchStats = useCallback(async () => {
         setIsLoading(true);
@@ -73,7 +80,7 @@ export default function AnalyticsOverview() {
             if (data) {
                 setStats(data as DashboardStats);
             } else {
-                setStats(null); // Or default empty object to avoid confusing "zero" state if justified
+                setStats(null);
             }
         } catch (err: any) {
             console.error("Dashboard fetch error:", err);
@@ -87,6 +94,21 @@ export default function AnalyticsOverview() {
             setIsLoading(false);
         }
     }, [toast]);
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        setExportProgress('Starting export...');
+        setShowExportMenu(false);
+        try {
+            const fileName = await generateExcelReport(exportTimeframe, setExportProgress);
+            toast({ title: '✅ Export Ready', description: `Saved as ${fileName}` });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Export Failed', description: err.message || 'Could not generate report.' });
+        } finally {
+            setIsExporting(false);
+            setExportProgress('');
+        }
+    };
 
     useEffect(() => {
         fetchStats();
@@ -177,15 +199,63 @@ export default function AnalyticsOverview() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="flex flex-wrap justify-between items-start gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white leading-none mb-2">Platform Overview</h2>
                     <p className="text-xs font-medium text-slate-400">Real-time tracking of platform growth and student activity</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchStats} disabled={isLoading} className="gap-2">
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                    Refresh
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" size="sm" onClick={fetchStats} disabled={isLoading} className="gap-2 rounded-xl">
+                        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+
+                    {/* Export Report Button */}
+                    <div className="relative">
+                        <div className="flex items-center rounded-xl overflow-hidden border border-indigo-200 dark:border-indigo-800">
+                            <Button
+                                size="sm"
+                                className="rounded-none rounded-l-xl bg-indigo-600 hover:bg-indigo-700 gap-2 font-bold"
+                                onClick={handleExport}
+                                disabled={isExporting}
+                            >
+                                {isExporting
+                                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{exportProgress || 'Exporting...'}</>
+                                    : <><FileSpreadsheet className="w-3.5 h-3.5" />Export Excel</>}
+                            </Button>
+                            <button
+                                className="h-full px-3 bg-indigo-600 hover:bg-indigo-700 border-l border-indigo-500 text-white transition-colors"
+                                onClick={() => setShowExportMenu(p => !p)}
+                                disabled={isExporting}
+                            >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+
+                        {showExportMenu && (
+                            <div className="absolute right-0 top-full mt-2 z-50 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 p-3 min-w-[220px]">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-2 mb-2">Select Time Period</p>
+                                {(['7d', '30d', '3m', '6m', '1y', 'all'] as ReportTimeframe[]).map(tf => (
+                                    <button
+                                        key={tf}
+                                        onClick={() => { setExportTimeframe(tf); setShowExportMenu(false); }}
+                                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                                            exportTimeframe === tf
+                                                ? 'bg-indigo-50 text-indigo-600'
+                                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        {tf === '7d' ? 'Last 7 Days' : tf === '30d' ? 'Last 30 Days' : tf === '3m' ? 'Last 3 Months' : tf === '6m' ? 'Last 6 Months' : tf === '1y' ? 'Last Year' : 'All Time'}
+                                        {exportTimeframe === tf && <span className="float-right text-indigo-400">✓</span>}
+                                    </button>
+                                ))}
+                                <div className="border-t border-slate-100 dark:border-slate-800 mt-2 pt-2 px-2">
+                                    <p className="text-[9px] text-slate-400 font-bold">Includes: Transactions, Students, Sessions, Growth &amp; Plan Breakdown</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {error && (
