@@ -95,6 +95,9 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
     const [activeTab, setActiveTab] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [currentLeadPage, setCurrentLeadPage] = useState(1);
+    // Per-user pending tier & duration selections (before admin clicks Apply)
+    const [userPendingTiers, setUserPendingTiers] = useState<Record<string, string>>({});
+    const [userDurations, setUserDurations] = useState<Record<string, number>>({});
     const itemsPerPage = 10;
     const { toast } = useToast();
 
@@ -237,7 +240,7 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
         }
     };
 
-    const handleUpdateTier = async (userId: string, newTier: string, userName: string) => {
+    const handleUpdateTier = async (userId: string, newTier: string, userName: string, months: number = 1) => {
         try {
             const planMap: Record<string, string> = {
                 'free': 'explorer',
@@ -246,11 +249,11 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
                 'global': 'global'
             };
 
-            // Auto-set expiry: free → null, paid → 30 days from now
+            // Calculate expiry based on selected months; free = null
             let expiryDate: string | null = null;
             if (newTier !== 'free' && newTier !== 'initiate') {
                 const d = new Date();
-                d.setDate(d.getDate() + 30);
+                d.setMonth(d.getMonth() + months);
                 expiryDate = d.toISOString();
             }
 
@@ -266,14 +269,16 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
             if (error) throw error;
 
             const expiryLabel = expiryDate
-                ? `Expires ${new Date(expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
-                : 'No expiry (free)';
+                ? `${months} month${months > 1 ? 's' : ''} → expires ${new Date(expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                : 'Free plan (no expiry)';
 
             toast({
-                title: "Tier Updated",
+                title: "Plan Updated ✅",
                 description: `${userName} → ${newTier.toUpperCase()}. ${expiryLabel}`,
             });
 
+            // Clear pending state for this user
+            setUserPendingTiers(prev => { const n = {...prev}; delete n[userId]; return n; });
             fetchUsers();
         } catch (error: any) {
             console.error('Update tier error:', error);
@@ -449,20 +454,53 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-6 w-full md:w-auto justify-end">
-                            {/* Subscription Tier Selector */}
-                            <div className="flex flex-col items-end gap-1">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan</span>
-                                <select
-                                    value={user.subscription_tier || 'free'}
-                                    onChange={(e) => handleUpdateTier(user.id, e.target.value, user.display_name || user.username || 'User')}
-                                    disabled={user.role === 'admin'}
-                                    className="text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <option value="free">Free/Explorer</option>
-                                    <option value="pro">Pro Plan</option>
-                                    <option value="global">Global Admission</option>
-                                </select>
+                        <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                            {/* Subscription Tier + Duration Selector */}
+                            <div className="flex flex-col items-end gap-1.5">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan & Duration</span>
+                                <div className="flex items-center gap-1.5">
+                                    {/* Plan selector */}
+                                    <select
+                                        value={userPendingTiers[user.id] ?? (user.subscription_tier || 'free')}
+                                        onChange={(e) => setUserPendingTiers(prev => ({ ...prev, [user.id]: e.target.value }))}
+                                        disabled={user.role === 'admin'}
+                                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <option value="free">Free/Explorer</option>
+                                        <option value="pro">Pro Plan</option>
+                                        <option value="global">Global Admission</option>
+                                    </select>
+
+                                    {/* Duration selector — only shown for paid plans */}
+                                    {(userPendingTiers[user.id] ?? user.subscription_tier) !== 'free' &&
+                                     (userPendingTiers[user.id] ?? user.subscription_tier) !== 'initiate' && (
+                                        <select
+                                            value={userDurations[user.id] ?? 1}
+                                            onChange={(e) => setUserDurations(prev => ({ ...prev, [user.id]: Number(e.target.value) }))}
+                                            className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        >
+                                            <option value={1}>1 Month</option>
+                                            <option value={3}>3 Months</option>
+                                            <option value={6}>6 Months</option>
+                                            <option value={12}>1 Year</option>
+                                        </select>
+                                    )}
+
+                                    {/* Apply button — only shown when something changed */}
+                                    {(userPendingTiers[user.id] !== undefined || userDurations[user.id] !== undefined) && !user.is_banned && (
+                                        <button
+                                            onClick={() => {
+                                                const tier = userPendingTiers[user.id] ?? user.subscription_tier ?? 'free';
+                                                const months = userDurations[user.id] ?? 1;
+                                                handleUpdateTier(user.id, tier, user.display_name || user.username || 'User', months);
+                                            }}
+                                            className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                                        >
+                                            Apply
+                                        </button>
+                                    )}
+                                </div>
+
                                 {/* Expiry date badge */}
                                 {user.subscription_expiry_date ? (
                                     <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
