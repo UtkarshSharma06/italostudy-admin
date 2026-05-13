@@ -30,13 +30,14 @@ import { format } from 'date-fns';
 
 interface Profile {
     id: string;
-    email: string; // Note: Email might not be in public view unless exposure is enabled, usually auth.users is simpler but profiles is safer. 
-    // If email is null in profiles, we might need to rely on username.
+    email: string;
     display_name: string | null;
     username: string | null;
     avatar_url: string | null;
     role: string;
     subscription_tier: string | null;
+    selected_plan: string | null;
+    subscription_expiry_date: string | null;
     community_enabled: boolean;
     is_banned: boolean;
     last_ip: string | null;
@@ -238,26 +239,39 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
 
     const handleUpdateTier = async (userId: string, newTier: string, userName: string) => {
         try {
-            // Map subscription tier to selected_plan
             const planMap: Record<string, string> = {
                 'free': 'explorer',
+                'initiate': 'explorer',
                 'pro': 'pro',
                 'global': 'global'
             };
 
+            // Auto-set expiry: free → null, paid → 30 days from now
+            let expiryDate: string | null = null;
+            if (newTier !== 'free' && newTier !== 'initiate') {
+                const d = new Date();
+                d.setDate(d.getDate() + 30);
+                expiryDate = d.toISOString();
+            }
+
             const { error } = await supabase
                 .from('profiles')
                 .update({
-                    subscription_tier: newTier,
-                    selected_plan: planMap[newTier] || 'explorer'
+                    subscription_tier: newTier === 'free' ? 'initiate' : newTier,
+                    selected_plan: planMap[newTier] || 'explorer',
+                    subscription_expiry_date: expiryDate,
                 })
                 .eq('id', userId);
 
             if (error) throw error;
 
+            const expiryLabel = expiryDate
+                ? `Expires ${new Date(expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                : 'No expiry (free)';
+
             toast({
                 title: "Tier Updated",
-                description: `${userName}'s subscription tier has been updated to ${newTier.toUpperCase()}.`,
+                description: `${userName} → ${newTier.toUpperCase()}. ${expiryLabel}`,
             });
 
             fetchUsers();
@@ -449,6 +463,21 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
                                     <option value="pro">Pro Plan</option>
                                     <option value="global">Global Admission</option>
                                 </select>
+                                {/* Expiry date badge */}
+                                {user.subscription_expiry_date ? (
+                                    <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                        new Date(user.subscription_expiry_date) < new Date()
+                                            ? 'text-red-500 bg-red-50'
+                                            : 'text-emerald-600 bg-emerald-50'
+                                    }`}>
+                                        {new Date(user.subscription_expiry_date) < new Date() ? '⚠ Expired ' : 'Until '}
+                                        {new Date(user.subscription_expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                    </span>
+                                ) : (
+                                    user.subscription_tier && user.subscription_tier !== 'initiate' && user.subscription_tier !== 'free' && (
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">No Expiry Set ⚠</span>
+                                    )
+                                )}
                             </div>
 
                             {/* Community Toggler */}
