@@ -18,7 +18,7 @@ import {
     RefreshCw,
     AlertCircle,
     Globe,
-    Search,
+    Target,
     FileSpreadsheet,
     ChevronDown
 } from 'lucide-react';
@@ -54,8 +54,8 @@ interface DashboardStats {
     top_exams: { exam_type: string; count: number }[];
     recent_activity: { type: string; title: string; description: string; time: string }[];
     top_utm_source?: string;
-    top_zero_search?: string;
-    total_events?: number;
+    avg_mock_score?: number;         // real: AVG(score) from completed mocks
+    total_practice_sessions?: number; // real: COUNT(*) from user_practice_responses
 }
 
 export default function AnalyticsOverview() {
@@ -179,23 +179,23 @@ export default function AnalyticsOverview() {
 
     const marketingCards = [
         {
-            label: 'Top Source',
-            value: stats?.top_utm_source || 'None',
-            subValue: 'Best acquisition channel',
+            label: 'Top UTM Source',
+            value: stats?.top_utm_source || 'Organic/Direct',
+            subValue: 'Best paid acquisition channel',
             icon: Globe,
             color: 'indigo'
         },
         {
-            label: 'Content Gap',
-            value: stats?.top_zero_search || 'None',
-            subValue: 'Most frequent missing query',
-            icon: Search,
+            label: 'Avg. Mock Score',
+            value: stats?.avg_mock_score !== undefined ? `${stats.avg_mock_score}` : '—',
+            subValue: 'Across all completed mock tests',
+            icon: Target,
             color: 'amber'
         },
         {
-            label: 'Tracking Events',
-            value: (stats?.total_events || 0).toLocaleString(),
-            subValue: 'Total data points captured',
+            label: 'Practice Sessions',
+            value: (stats?.total_practice_sessions || 0).toLocaleString(),
+            subValue: 'Total questions answered on platform',
             icon: LineChart,
             color: 'emerald'
         }
