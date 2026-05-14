@@ -164,6 +164,9 @@ serve(async (req: Request) => {
                 transaction_id: transactionId,
                 user_id: user.id,
                 plan_id: transaction.plan_id || 'STORE_ORDER',
+                // Dodo requires store_order_id to be a non-null string.
+                // For app subscriptions there is no store order — use the transaction_id as fallback.
+                store_order_id: (transaction.metadata?.store_order_id as string) || transactionId,
             },
         };
 
