@@ -12,6 +12,44 @@ const EUR_RATES: Record<string, number> = { USD: 1.08, INR: 106.6, GBP: 0.86, NG
 const toEUR = (amount: number, currency: string) =>
     currency === 'EUR' ? amount : amount / (EUR_RATES[currency] || 1);
 
+// ISO 2-letter → full country name (covers top 60 countries by internet traffic)
+const ISO_COUNTRY_NAMES: Record<string, string> = {
+    AF:'Afghanistan',AL:'Albania',DZ:'Algeria',AR:'Argentina',AU:'Australia',
+    AT:'Austria',AZ:'Azerbaijan',BD:'Bangladesh',BE:'Belgium',BR:'Brazil',
+    BG:'Bulgaria',CA:'Canada',CL:'Chile',CN:'China',CO:'Colombia',
+    HR:'Croatia',CZ:'Czech Republic',DK:'Denmark',EG:'Egypt',FI:'Finland',
+    FR:'France',GE:'Georgia',DE:'Germany',GH:'Ghana',GR:'Greece',
+    HU:'Hungary',IN:'India',ID:'Indonesia',IQ:'Iraq',IE:'Ireland',
+    IL:'Israel',IT:'Italy',JP:'Japan',JO:'Jordan',KZ:'Kazakhstan',
+    KE:'Kenya',KW:'Kuwait',LB:'Lebanon',LY:'Libya',MY:'Malaysia',
+    MX:'Mexico',MA:'Morocco',NL:'Netherlands',NZ:'New Zealand',NG:'Nigeria',
+    NO:'Norway',OM:'Oman',PK:'Pakistan',PE:'Peru',PH:'Philippines',
+    PL:'Poland',PT:'Portugal',QA:'Qatar',RO:'Romania',RU:'Russia',
+    SA:'Saudi Arabia',SN:'Senegal',RS:'Serbia',SG:'Singapore',ZA:'South Africa',
+    KR:'South Korea',ES:'Spain',LK:'Sri Lanka',SE:'Sweden',CH:'Switzerland',
+    SY:'Syria',TW:'Taiwan',TZ:'Tanzania',TH:'Thailand',TN:'Tunisia',
+    TR:'Turkey',UA:'Ukraine',AE:'UAE',GB:'United Kingdom',US:'United States',
+    UZ:'Uzbekistan',VN:'Vietnam',YE:'Yemen',ZW:'Zimbabwe',
+};
+
+/**
+ * Normalise a raw country value from the DB.
+ * Handles: "IN", "in", "India", "INDIA" → "India"
+ */
+const normaliseCountry = (raw: string | null | undefined): string => {
+    if (!raw) return 'Unknown';
+    const trimmed = raw.trim();
+    // 2-letter ISO code (case-insensitive)
+    if (trimmed.length === 2) {
+        const upper = trimmed.toUpperCase();
+        return ISO_COUNTRY_NAMES[upper] || upper;
+    }
+    // Already a full name — return title-cased
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase()
+        // Fix ALL-CAPS like "INDIA" → "India"
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
 const PLAN_COLORS: Record<string, string> = { global: '#6366f1', pro: '#10b981', free: '#94a3b8', explorer: '#94a3b8' };
 const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -144,7 +182,7 @@ export default function InvestorDashboard() {
 
             // ── GEOGRAPHY ────────────────────────────────────────────────
             const countryCounts = profiles.reduce((acc: any, p: any) => {
-                const c = p.country || 'Unknown';
+                const c = normaliseCountry(p.country);
                 acc[c] = (acc[c] || 0) + 1;
                 return acc;
             }, {});
