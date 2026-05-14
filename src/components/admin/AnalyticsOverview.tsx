@@ -44,6 +44,11 @@ interface DashboardStats {
     unique_visitors_today: number;
     active_subscriptions: number;
     active_bans_count: number;
+    // Real activity-based metrics
+    weekly_active_users: number;
+    monthly_active_users: number;
+    unique_active_today: number;
+    // Retention % (active / total)
     retention_rate_weekly: number;
     retention_rate_monthly: number;
     top_exams: { exam_type: string; count: number }[];
@@ -78,7 +83,7 @@ export default function AnalyticsOverview() {
             console.log("Dashboard stats received:", data);
 
             if (data) {
-                setStats(data as DashboardStats);
+                setStats(data as unknown as DashboardStats);
             } else {
                 setStats(null);
             }
@@ -138,16 +143,9 @@ export default function AnalyticsOverview() {
         {
             label: 'Total Students',
             value: stats?.total_users || 0,
-            subValue: `+${stats?.new_users_today || 0} today`,
+            subValue: `+${stats?.new_users_today || 0} joined today`,
             icon: Users,
             color: 'indigo'
-        },
-        {
-            label: 'Total Visitors',
-            value: stats?.total_visitors || 0,
-            subValue: `${stats?.unique_visitors_today || 0} unique today`,
-            icon: MousePointer2,
-            color: 'emerald'
         },
         {
             label: 'Active Plans',
@@ -157,19 +155,26 @@ export default function AnalyticsOverview() {
             color: 'amber'
         },
         {
-            label: 'Weekly Active',
-            value: `${stats?.retention_rate_weekly || 0}%`,
-            subValue: 'Active last 7 days',
+            label: 'Active Last 7 Days',
+            value: stats?.weekly_active_users ?? 0,
+            subValue: `${stats?.retention_rate_weekly ?? 0}% of all students`,
             icon: TrendingUp,
+            color: 'emerald'
+        },
+        {
+            label: 'Active Last 30 Days',
+            value: stats?.monthly_active_users ?? 0,
+            subValue: `${stats?.retention_rate_monthly ?? 0}% of all students`,
+            icon: UserCheck,
             color: 'rose'
         },
         {
-            label: 'Monthly Active',
-            value: `${stats?.retention_rate_monthly || 0}%`,
-            subValue: 'Active last 30 days',
-            icon: TrendingUp,
-            color: 'indigo'
-        }
+            label: 'Unique Today',
+            value: stats?.unique_active_today ?? 0,
+            subValue: 'Distinct users active today',
+            icon: ShieldCheck,
+            color: 'violet'
+        },
     ];
 
     const marketingCards = [

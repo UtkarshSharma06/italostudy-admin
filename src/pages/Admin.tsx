@@ -57,7 +57,8 @@ import {
     Lock,
     Moon,
     Sun,
-    TrendingUp
+    TrendingUp,
+    Globe
 } from 'lucide-react';
 import { generateMockTestPDF } from '@/utils/pdfExport';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1017,11 +1018,62 @@ export default function Admin() {
     };
 
     const navigationGroups = [
-        { title: "Analytics", items: [{ id: "analytics", label: "Dashboard", icon: BarChart3 }, { id: "investor", label: "Investor KPIs", icon: TrendingUp }, { id: "marketing", label: "Marketing", icon: Activity }, { id: "seo-health", label: "SEO Health", icon: Activity }, { id: "mock-results", label: "Results", icon: Trophy }] },
-        { title: "Finance", items: [{ id: "payments", label: "Payments", icon: Wallet }, { id: "pricing", label: "Pricing", icon: Zap }, { id: "coupons", label: "Coupons", icon: Ticket }] },
-        { title: "Management", items: [{ id: "sessions", label: "Sessions", icon: Calendar }, { id: "series", label: "Mock Series", icon: Layers }, { id: "reports", label: "Question Reports", icon: AlertTriangle }, { id: "qa-reports", label: "Q&A Reports", icon: ShieldAlert }, { id: "mock-evals", label: "Mock Grade", icon: ShieldCheck }, { id: "writing-evals", label: "Essay Grade", icon: PenTool }, { id: "site-reviews", label: "Site Reviews", icon: Star }] },
-        { title: "Material" as any, items: [{ id: "exam-manager", label: "Exam Model", icon: Layers }, { id: "learning", label: "Lessons", icon: Brain }, { id: "reading", label: "Reading", icon: BookOpen }, { id: "listening", label: "Listening", icon: Headphones }, { id: "writing-tasks", label: "Tasks", icon: Pencil }, { id: "practice", label: "Practice Bank", icon: Layers }, { id: "booklet", label: "Booklet Generator", icon: BookOpen }, { id: "3d-labs", label: "Labs", icon: Box }, { id: "resources", label: "Resources", icon: FileText }, { id: "blog", label: "Blog", icon: Newspaper }, { id: "page-content", label: "Page Content", icon: FileEdit }, { id: "status-hub", label: "Status Hub", icon: Activity }] },
-        { title: "Ops", items: [{ id: "users", label: "Students", icon: UsersIcon }, { id: "consultants", label: "Staff", icon: UserCog }, { id: "community", label: "Community", icon: Hash }, { id: "feedback", label: "Feedback", icon: MessageSquare }, { id: "notifications", label: "Alerts", icon: Bell }, { id: "announcements", label: "Banner Ads", icon: Megaphone }, { id: "security", label: "Security & Bans", icon: ShieldCheck }, { id: "system-config", label: "Settings", icon: Settings }, ...(isSuperAdmin ? [{ id: "sub-admins", label: "Sub-Admins", icon: UserPlus }] : [])] }
+        {
+            title: "Analytics", items: [
+                { id: "analytics",    label: "Dashboard",     icon: BarChart3    },
+                { id: "investor",     label: "Investor KPIs", icon: TrendingUp   },
+                { id: "marketing",    label: "Marketing",     icon: Radar        },
+                { id: "seo-health",   label: "SEO Health",    icon: Globe        },
+                { id: "mock-results", label: "Results",       icon: Trophy       },
+            ]
+        },
+        {
+            title: "Finance", items: [
+                { id: "payments", label: "Payments", icon: Wallet  },
+                { id: "pricing",  label: "Pricing",  icon: Zap     },
+                { id: "coupons",  label: "Coupons",  icon: Ticket  },
+            ]
+        },
+        {
+            title: "Management", items: [
+                { id: "sessions",      label: "Sessions",        icon: Calendar    },
+                { id: "series",        label: "Mock Series",     icon: TableIcon   },
+                { id: "reports",       label: "Question Reports",icon: AlertTriangle },
+                { id: "qa-reports",    label: "Q&A Reports",     icon: ShieldAlert },
+                { id: "mock-evals",    label: "Mock Grade",      icon: CheckCircle2},
+                { id: "writing-evals", label: "Essay Grade",     icon: PenTool     },
+                { id: "site-reviews",  label: "Site Reviews",    icon: Star        },
+            ]
+        },
+        {
+            title: "Material", items: [
+                { id: "exam-manager",  label: "Exam Model",        icon: FileJson    },
+                { id: "learning",      label: "Lessons",           icon: Brain       },
+                { id: "reading",       label: "Reading",           icon: BookOpen    },
+                { id: "listening",     label: "Listening",         icon: Headphones  },
+                { id: "writing-tasks", label: "Tasks",             icon: Pencil      },
+                { id: "practice",      label: "Practice Bank",     icon: Layers      },
+                { id: "booklet",       label: "Booklet Generator", icon: FileDown    },
+                { id: "3d-labs",       label: "Labs",              icon: Box         },
+                { id: "resources",     label: "Resources",         icon: FileText    },
+                { id: "blog",          label: "Blog",              icon: Newspaper   },
+                { id: "page-content",  label: "Page Content",      icon: PencilLine  },
+                { id: "status-hub",    label: "Status Hub",        icon: LinkIcon    },
+            ]
+        },
+        {
+            title: "Ops", items: [
+                { id: "users",         label: "Students",       icon: UsersIcon  },
+                { id: "consultants",   label: "Staff",          icon: UserCog    },
+                { id: "community",     label: "Community",      icon: Hash       },
+                { id: "feedback",      label: "Feedback",       icon: MessageSquare },
+                { id: "notifications", label: "Alerts",         icon: Bell       },
+                { id: "announcements", label: "Banner Ads",     icon: Megaphone  },
+                { id: "security",      label: "Security & Bans",icon: Lock       },
+                { id: "system-config", label: "Settings",       icon: Settings   },
+                ...(isSuperAdmin ? [{ id: "sub-admins", label: "Sub-Admins", icon: UserPlus }] : [])
+            ]
+        },
     ].map(group => ({
         ...group,
         items: group.items.filter(item => isSuperAdmin || allowedTabs.includes(item.id))
