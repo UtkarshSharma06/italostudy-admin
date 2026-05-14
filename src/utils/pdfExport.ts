@@ -385,7 +385,7 @@ export const generateMockTestPDF = async (
 
         if (sessionId) {
             try {
-                const solutionUrl = `https://italostudy.com/solutions/${sessionId}`;
+                const solutionUrl = `https://app.italostudy.com/solutions/${sessionId}`;
                 const qrDataUrl = await QRCode.toDataURL(solutionUrl, { margin: 1, width: 100 });
                 const boxX = (pageWidth - 100) / 2;
                 doc.setDrawColor(COLORS.primary).setLineWidth(0.3).roundedRect(boxX, currentY, 100, 18, 3, 3, 'S');
