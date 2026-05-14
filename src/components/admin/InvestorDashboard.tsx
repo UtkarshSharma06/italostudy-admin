@@ -34,20 +34,32 @@ const ISO_COUNTRY_NAMES: Record<string, string> = {
 
 /**
  * Normalise a raw country value from the DB.
- * Handles: "IN", "in", "India", "INDIA" → "India"
+ * Handles ALL of: "IN", "in", "India", "INDIA", "INdia", "UNknown", etc.
  */
 const normaliseCountry = (raw: string | null | undefined): string => {
     if (!raw) return 'Unknown';
     const trimmed = raw.trim();
-    // 2-letter ISO code (case-insensitive)
+    if (!trimmed) return 'Unknown';
+
+    // 1. Try exact 2-letter ISO code (case-insensitive)
     if (trimmed.length === 2) {
         const upper = trimmed.toUpperCase();
-        return ISO_COUNTRY_NAMES[upper] || upper;
+        if (ISO_COUNTRY_NAMES[upper]) return ISO_COUNTRY_NAMES[upper];
     }
-    // Already a full name — return title-cased
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase()
-        // Fix ALL-CAPS like "INDIA" → "India"
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    // 2. Lowercase the whole string and match against known full names
+    const lower = trimmed.toLowerCase();
+
+    // Handle "unknown" variants first
+    if (lower === 'unknown' || lower === 'n/a' || lower === 'none') return 'Unknown';
+
+    // Walk ISO map and compare full names case-insensitively
+    for (const name of Object.values(ISO_COUNTRY_NAMES)) {
+        if (name.toLowerCase() === lower) return name;
+    }
+
+    // 3. Proper title-case fallback (e.g. "bangladesh" → "Bangladesh")
+    return lower.replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 const PLAN_COLORS: Record<string, string> = { global: '#6366f1', pro: '#10b981', free: '#94a3b8', explorer: '#94a3b8' };
