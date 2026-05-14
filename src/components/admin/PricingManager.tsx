@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,8 @@ interface PlanCycle {
     durationValue: number;
     durationUnit: 'days' | 'months' | 'years';
     dodoId?: string;
+    razorpayId?: string;
+    paypalId?: string;
     regionalPrices?: Record<string, number>;
 }
 
@@ -473,7 +475,7 @@ export default function PricingManager() {
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <Label className="text-[8px] uppercase font-bold text-slate-400">Price (€)</Label>
+                                                                <Label className="text-[8px] uppercase font-bold text-slate-400">Price (â‚¬)</Label>
                                                                 <Input
                                                                     type="number"
                                                                     value={cycle.price}
@@ -519,18 +521,20 @@ export default function PricingManager() {
                                                             </div>
                                                         </div>
 
-                                                        <div className="space-y-1 mt-2">
-                                                            <Label className="text-[8px] uppercase font-bold text-teal-600 dark:text-teal-500">Dodo Plan ID (Product/Price ID)</Label>
-                                                            <Input
-                                                                value={cycle.dodoId || ''}
-                                                                onChange={e => {
-                                                                    const newCycles = [...plan.cycles];
-                                                                    newCycles[cIdx] = { ...cycle, dodoId: e.target.value };
-                                                                    updatePlan(plan.id, { cycles: newCycles });
-                                                                }}
-                                                                className="h-8 text-[10px] font-bold rounded-lg border-teal-200 focus-visible:ring-teal-500 bg-teal-50/30 dark:bg-teal-900/10 dark:border-teal-900/50"
-                                                                placeholder="e.g. plan_xxx..."
-                                                            />
+                                                        <div className="mt-3 space-y-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Gateway Subscription Plan IDs</p>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[8px] uppercase font-bold text-teal-600 dark:text-teal-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span> Dodo Payments</Label>
+                                                                <Input value={cycle.dodoId || ''} onChange={e => { const nc = [...plan.cycles]; nc[cIdx] = { ...cycle, dodoId: e.target.value }; updatePlan(plan.id, { cycles: nc }); }} className="h-8 text-[10px] font-bold rounded-lg border-teal-200 bg-teal-50/30 dark:bg-teal-900/10" placeholder="pdt_xxx" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[8px] uppercase font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> Razorpay</Label>
+                                                                <Input value={cycle.razorpayId || ''} onChange={e => { const nc = [...plan.cycles]; nc[cIdx] = { ...cycle, razorpayId: e.target.value }; updatePlan(plan.id, { cycles: nc }); }} className="h-8 text-[10px] font-bold rounded-lg border-blue-200 bg-blue-50/30 dark:bg-blue-900/10" placeholder="plan_xxxxxxxxxx" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[8px] uppercase font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span> PayPal</Label>
+                                                                <Input value={cycle.paypalId || ''} onChange={e => { const nc = [...plan.cycles]; nc[cIdx] = { ...cycle, paypalId: e.target.value }; updatePlan(plan.id, { cycles: nc }); }} className="h-8 text-[10px] font-bold rounded-lg border-indigo-200 bg-indigo-50/30 dark:bg-indigo-900/10" placeholder="P-xxxxxxxxxxxx" />
+                                                            </div>
                                                         </div>
 
                                                         <RegionalPriceEditor
