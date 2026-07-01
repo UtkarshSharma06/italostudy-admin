@@ -4,32 +4,36 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Wallet, TrendingUp, AlertCircle, Search,
-    Download, Users, ArrowUpRight, CheckCircle2,
+    Download, ArrowUpRight, CheckCircle2,
     XCircle, Clock, CreditCard, Trash2, FileText,
-    RefreshCw
+    RefreshCw, GraduationCap, Zap, Package
 } from 'lucide-react';
 import { generateInvoice } from '@/utils/invoiceGenerator';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, subDays, subMonths, subYears } from 'date-fns';
 
-interface Transaction {
+// ── Unified transaction row ───────────────────────────────────────────────────
+interface UnifiedTransaction {
     id: string;
     amount: number;
     currency: string;
     status: 'completed' | 'pending' | 'failed' | 'refunded';
-    payment_method: 'stripe' | 'razorpay' | 'paypal' | 'lemonsqueezy';
+    payment_method: string;
     created_at: string;
     user_id: string;
-    plan_id: string;
-    // We'll join profile data
+    plan_id?: string;          // subscription only
+    course_id?: string;        // course only
+    course_title?: string;     // course only
+    amount_eur?: number;       // course uses this
+    txn_type: 'subscription' | 'course';
     profiles?: {
         display_name: string;
         email: string;
-        group_id?: string; // Avatar logic if available
-    }
+    };
 }
 
+// ── Provider icon ─────────────────────────────────────────────────────────────
 const ProviderIcon = ({ type }: { type: string }) => {
     switch (type) {
         case 'stripe':
@@ -38,6 +42,9 @@ const ProviderIcon = ({ type }: { type: string }) => {
             return <div className="w-8 h-8 rounded-lg bg-[#003087]/10 text-[#003087] flex items-center justify-center font-bold text-[10px] tracking-tight">PAL</div>;
         case 'razorpay':
             return <div className="w-8 h-8 rounded-lg bg-[#3395FF]/10 text-[#3395FF] flex items-center justify-center font-bold text-[10px] tracking-tight">RZR</div>;
+        case 'dodo':
+        case 'dodopayments':
+            return <div className="w-8 h-8 rounded-lg bg-[#6B21A8]/10 text-[#6B21A8] flex items-center justify-center font-bold text-[10px] tracking-tight">DDO</div>;
         case 'lemonsqueezy':
             return <div className="w-8 h-8 rounded-lg bg-[#FFC233]/10 text-[#FFC233] flex items-center justify-center font-bold text-[10px] tracking-tight">LMN</div>;
         default:
@@ -45,101 +52,178 @@ const ProviderIcon = ({ type }: { type: string }) => {
     }
 };
 
+// ── Status badge ──────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }: { status: string }) => {
-    const styles = {
+    const styles: Record<string, string> = {
         completed: "bg-emerald-50 text-emerald-600 border-emerald-100",
         pending: "bg-amber-50 text-amber-600 border-amber-100",
         failed: "bg-rose-50 text-rose-600 border-rose-100",
-        refunded: "bg-slate-50 text-slate-500 border-slate-100"
+        refunded: "bg-slate-50 text-slate-500 border-slate-100",
     };
-
-    const icons = {
-        completed: <CheckCircle2 size={12} />,
-        pending: <Clock size={12} />,
-        failed: <XCircle size={12} />,
-        refunded: <ArrowUpRight size={12} />
+    const icons: Record<string, JSX.Element> = {
+        completed: <CheckCircle2 size={11} />,
+        pending: <Clock size={11} />,
+        failed: <XCircle size={11} />,
+        refunded: <ArrowUpRight size={11} />,
     };
-
     return (
         <span className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
-            styles[status as keyof typeof styles] || styles.pending
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border w-fit",
+            styles[status] || styles.pending
         )}>
-            {icons[status as keyof typeof icons]}
+            {icons[status]}
             {status}
         </span>
     );
 };
 
+// ── Type badge ────────────────────────────────────────────────────────────────
+const TypeBadge = ({ type }: { type: 'subscription' | 'course' }) => (
+    <span className={cn(
+        "flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit",
+        type === 'subscription'
+            ? "bg-indigo-50 text-indigo-600 border-indigo-100"
+            : "bg-violet-50 text-violet-600 border-violet-100"
+    )}>
+        {type === 'subscription' ? <Zap size={9} /> : <GraduationCap size={9} />}
+        {type === 'subscription' ? 'Subscription' : 'Course'}
+    </span>
+);
+
+// ── Conversion rates ──────────────────────────────────────────────────────────
+const RATES: Record<string, number> = { 'USD': 1.08, 'INR': 106.6, 'GBP': 0.86, 'NGN': 1750 };
+const CURRENCY_SYMBOLS: Record<string, string> = { 'USD': '$', 'EUR': '€', 'INR': '₹', 'GBP': '£', 'NGN': '₦' };
+const toEur = (amount: number, currency: string) =>
+    currency === 'EUR' ? amount : amount / (RATES[currency] || 1);
+
 export default function PaymentsManager() {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactions, setTransactions] = useState<UnifiedTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [stats, setStats] = useState({ total: 0, count: 0, failed: 0 });
+    const [stats, setStats] = useState({ subscriptionRevenue: 0, courseRevenue: 0, count: 0, failed: 0 });
     const [currentPage, setCurrentPage] = useState(1);
     const [timeframe, setTimeframe] = useState('6m');
     const [searchQuery, setSearchQuery] = useState('');
-    const itemsPerPage = 10;
+    const [typeFilter, setTypeFilter] = useState<'all' | 'subscription' | 'course'>('all');
+    const itemsPerPage = 12;
 
-    useEffect(() => {
-        fetchTransactions();
-    }, [timeframe]);
+    useEffect(() => { fetchTransactions(); }, [timeframe]);
 
     const fetchTransactions = async () => {
         setIsLoading(true);
         try {
-            let query = supabase
-                .from('transactions')
-                .select(`
-                    *,
-                    profiles (
-                        display_name,
-                        email
-                    )
-                `)
-                .neq('plan_id', 'explorer')
-                .neq('plan_id', 'STORE_ORDER'); // Store payments are managed in italostudy-store-admin — never show here
-
-
+            let startDate: Date | null = null;
             if (timeframe !== 'all') {
-                let startDate = new Date();
-                if (timeframe === '7d') startDate = subDays(new Date(), 7);
+                if      (timeframe === '7d')  startDate = subDays(new Date(), 7);
                 else if (timeframe === '30d') startDate = subDays(new Date(), 30);
-                else if (timeframe === '3m') startDate = subMonths(new Date(), 3);
-                else if (timeframe === '6m') startDate = subMonths(new Date(), 6);
-                else if (timeframe === '1y') startDate = subYears(new Date(), 1);
-
-                query = query.gte('created_at', startDate.toISOString());
+                else if (timeframe === '3m')  startDate = subMonths(new Date(), 3);
+                else if (timeframe === '6m')  startDate = subMonths(new Date(), 6);
+                else if (timeframe === '1y')  startDate = subYears(new Date(), 1);
             }
 
-            const { data, error } = await query.order('created_at', { ascending: false });
+            // ── Paginated subscription transactions ─────────────────────────────
+            const fetchAllSubs = async () => {
+                const PAGE = 1000;
+                let page = 0;
+                const all: any[] = [];
+                while (true) {
+                    let q = supabase
+                        .from('transactions')
+                        .select('*, profiles(display_name, email)')
+                        .neq('plan_id', 'explorer')
+                        .neq('plan_id', 'STORE_ORDER')
+                        .order('created_at', { ascending: false })
+                        .range(page * PAGE, (page + 1) * PAGE - 1);
+                    if (startDate) q = q.gte('created_at', startDate.toISOString());
+                    const { data, error } = await q;
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break;
+                    page++;
+                }
+                return all;
+            };
 
-            if (error) throw error;
+            // ── Paginated course transactions ────────────────────────────────
+            const fetchAllCourses = async () => {
+                const PAGE = 1000;
+                let page = 0;
+                const all: any[] = [];
+                while (true) {
+                    let q = (supabase as any)
+                        .from('course_transactions')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .range(page * PAGE, (page + 1) * PAGE - 1);
+                    if (startDate) q = q.gte('created_at', startDate.toISOString());
+                    const { data, error } = await q;
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break;
+                    page++;
+                }
+                return all;
+            };
 
-            const txs = data || [];
-            setTransactions(txs);
+            const [subData, courseData] = await Promise.all([fetchAllSubs(), fetchAllCourses()]);
 
-            // Calc stats
-            // Calc stats in EUR
-            const total = txs
+            // Fetch profiles for course transactions manually
+            const courseUserIds = Array.from(new Set(courseData.map((c: any) => c.user_id).filter(Boolean)));
+            const courseProfilesMap: Record<string, any> = {};
+            
+            if (courseUserIds.length > 0) {
+                for (let i = 0; i < courseUserIds.length; i += 500) {
+                    const chunk = courseUserIds.slice(i, i + 500);
+                    const { data: pData } = await supabase
+                        .from('profiles')
+                        .select('id, display_name, email')
+                        .in('id', chunk);
+                    if (pData) {
+                        pData.forEach((p: any) => {
+                            courseProfilesMap[p.id] = p;
+                        });
+                    }
+                }
+            }
+
+            // ── Merge & normalize ───────────────────────────────────────────
+            const subs: UnifiedTransaction[] = subData.map((t: any) => ({
+                ...t,
+                txn_type: 'subscription' as const,
+                amount: Number(t.amount),
+            }));
+
+            const courses: UnifiedTransaction[] = courseData.map((t: any) => ({
+                id: t.id,
+                amount: Number(t.amount_eur),
+                amount_eur: Number(t.amount_eur),
+                currency: 'EUR',
+                status: t.status,
+                payment_method: t.payment_method || 'dodo',
+                created_at: t.created_at,
+                user_id: t.user_id,
+                course_id: t.course_id,
+                course_title: t.metadata?.course_title || 'Course',
+                txn_type: 'course' as const,
+                profiles: courseProfilesMap[t.user_id] || null,
+            }));
+
+            const merged = [...subs, ...courses].sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            setTransactions(merged);
+
+            // ── Stats ────────────────────────────────────────────────────
+            const subRevenue = subs
                 .filter(t => t.status === 'completed')
-                .reduce((acc, t) => {
-                    const amount = Number(t.amount);
-                    if (t.currency === 'EUR') return acc + amount;
+                .reduce((acc, t) => acc + toEur(t.amount, t.currency), 0);
+            const courseRevenue = courses
+                .filter(t => t.status === 'completed')
+                .reduce((acc, t) => acc + Number(t.amount_eur || t.amount), 0);
+            const failed = merged.filter(t => t.status === 'failed').length;
 
-                    // Conversion logic (matching useCurrency logic but in reverse)
-                    const rates: Record<string, number> = {
-                        'USD': 1.08, 'INR': 106.6, 'GBP': 0.86, 'NGN': 1750
-                    };
-                    const rate = rates[t.currency] || 1;
-                    return acc + (amount / rate);
-                }, 0);
-
-            setStats({
-                total,
-                count: txs.length,
-                failed: txs.filter(t => t.status === 'failed').length
-            });
-
+            setStats({ subscriptionRevenue: subRevenue, courseRevenue, count: merged.length, failed });
         } catch (err) {
             toast.error('Failed to load transactions');
         } finally {
@@ -147,50 +231,39 @@ export default function PaymentsManager() {
         }
     };
 
-    const handleDeleteTransaction = async (id: string) => {
-        if (!window.confirm('Are you sure you want to permanently delete this transaction record? This cannot be undone.')) return;
-
+    const handleDeleteTransaction = async (tx: UnifiedTransaction) => {
+        if (!window.confirm('Permanently delete this transaction record? This cannot be undone.')) return;
         try {
-            const { error } = await supabase
-                .from('transactions')
-                .delete()
-                .eq('id', id);
-
+            const table = tx.txn_type === 'course' ? 'course_transactions' : 'transactions';
+            const { error } = await (supabase as any).from(table).delete().eq('id', tx.id);
             if (error) throw error;
-
-            setTransactions(prev => prev.filter(t => t.id !== id));
+            setTransactions(prev => prev.filter(t => t.id !== tx.id));
             toast.success('Transaction deleted');
         } catch (err) {
-            console.error('Delete error:', err);
             toast.error('Failed to delete transaction');
         }
     };
 
     const handleDownloadCSV = () => {
-        if (transactions.length === 0) {
-            toast.error('No data to export');
-            return;
-        }
-
-        const headers = ['ID', 'Customer', 'Email', 'Amount (EUR Equivalent)', 'Captured Amount', 'Currency', 'Status', 'Method', 'Plan', 'Date'];
-        const csvData = transactions.map(tx => {
-            const eurAmount = tx.currency === 'EUR' ? tx.amount : (Number(tx.amount) / ({ 'INR': 106.6, 'USD': 1.08, 'GBP': 0.86 }[tx.currency] || 1)).toFixed(2);
+        if (transactions.length === 0) { toast.error('No data to export'); return; }
+        const headers = ['ID', 'Type', 'Customer', 'Email', 'Amount (EUR)', 'Currency', 'Status', 'Method', 'Plan/Course', 'Date'];
+        const csvData = filteredTransactions.map(tx => {
+            const eurAmt = tx.txn_type === 'course' ? (tx.amount_eur || tx.amount).toFixed(2) : toEur(tx.amount, tx.currency).toFixed(2);
             return [
                 tx.id,
+                tx.txn_type,
                 tx.profiles?.display_name || 'Unknown',
                 tx.profiles?.email || 'N/A',
-                eurAmount,
-                tx.amount,
+                eurAmt,
                 tx.currency,
                 tx.status,
                 tx.payment_method,
-                tx.plan_id || 'N/A',
-                format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm')
+                tx.txn_type === 'course' ? (tx.course_title || tx.course_id || 'N/A') : (tx.plan_id || 'N/A'),
+                format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm'),
             ].join(',');
         });
-
-        const csvContent = [headers.join(','), ...csvData].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const csv = [headers.join(','), ...csvData].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -200,14 +273,25 @@ export default function PaymentsManager() {
         toast.success('CSV Downloaded');
     };
 
+    const handleDownloadInvoice = (tx: UnifiedTransaction) => {
+        if (tx.txn_type === 'course') {
+            generateInvoice(null, tx.profiles, 'course', tx);
+        } else {
+            generateInvoice(tx, tx.profiles, 'subscription');
+        }
+    };
+
     const filteredTransactions = transactions.filter(tx => {
-        const query = searchQuery.toLowerCase();
-        return (
-            (tx.profiles?.display_name?.toLowerCase() || '').includes(query) ||
-            (tx.profiles?.email?.toLowerCase() || '').includes(query) ||
-            tx.id.toLowerCase().includes(query) ||
-            (tx.plan_id?.toLowerCase() || '').includes(query)
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = (
+            (tx.profiles?.display_name?.toLowerCase() || '').includes(q) ||
+            (tx.profiles?.email?.toLowerCase() || '').includes(q) ||
+            tx.id.toLowerCase().includes(q) ||
+            (tx.plan_id?.toLowerCase() || '').includes(q) ||
+            (tx.course_title?.toLowerCase() || '').includes(q)
         );
+        const matchesType = typeFilter === 'all' || tx.txn_type === typeFilter;
+        return matchesSearch && matchesType;
     });
 
     const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -216,105 +300,138 @@ export default function PaymentsManager() {
         currentPage * itemsPerPage
     );
 
+    const totalRevenue = stats.subscriptionRevenue + stats.courseRevenue;
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header / Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-center gap-6">
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
-                        <Wallet className="w-7 h-7" />
+
+            {/* ── Stats Cards ─────────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                {/* Total Revenue */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-center gap-5">
+                    <div className="w-13 h-13 w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
+                        <Wallet className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-slate-400">Total Revenue</p>
+                        <p className="text-xs font-medium text-slate-400">Total Revenue</p>
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                            €{stats.total.toLocaleString()}
+                            €{totalRevenue.toLocaleString('en-EU', { maximumFractionDigits: 0 })}
                         </h3>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-center gap-6">
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
-                        <TrendingUp className="w-7 h-7" />
+                {/* Subscription Revenue */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
+                        <Zap className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-slate-400">Total Transactions</p>
+                        <p className="text-xs font-medium text-slate-400">Subscriptions</p>
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                            {stats.count}
+                            €{stats.subscriptionRevenue.toLocaleString('en-EU', { maximumFractionDigits: 0 })}
                         </h3>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-center gap-6">
-                    <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600">
-                        <AlertCircle className="w-7 h-7" />
+                {/* Course Revenue */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-2xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center text-violet-600">
+                        <GraduationCap className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-slate-400">Failed Payments</p>
+                        <p className="text-xs font-medium text-slate-400">Course Revenue</p>
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                            {stats.failed}
+                            €{stats.courseRevenue.toLocaleString('en-EU', { maximumFractionDigits: 0 })}
                         </h3>
+                    </div>
+                </div>
+
+                {/* Failed */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600">
+                        <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-medium text-slate-400">Failed Payments</p>
+                        <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{stats.failed}</h3>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">in selected period</p>
                     </div>
                 </div>
             </div>
 
-            {/* List */}
+            {/* ── Transactions Table ───────────────────────────────────────── */}
             <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
-                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Transactions</h3>
-                        <p className="text-xs text-slate-400 font-medium mt-1">Real-time payment audit log</p>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                        {/* Timeframe Selector */}
-                        <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
-                            {['7d', '30d', '3m', '6m', '1y', 'all'].map((tf) => (
-                                <button
-                                    key={tf}
-                                    onClick={() => { setTimeframe(tf); setCurrentPage(1); }}
-                                    className={cn(
-                                        "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                                        timeframe === tf
-                                            ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-sm"
-                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                    )}
-                                >
-                                    {tf}
-                                </button>
-                            ))}
+                {/* Table header controls */}
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">All Transactions</h3>
+                            <p className="text-xs text-slate-400 font-medium mt-0.5">Subscriptions + Course purchases · Live audit log</p>
                         </div>
 
-                        <div className="relative">
-                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                            <Input
-                                placeholder="Search user or plan..."
-                                className="pl-9 h-10 w-64 rounded-xl bg-slate-50 border-slate-200"
-                                value={searchQuery}
-                                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                            />
+                        <div className="flex flex-wrap gap-3 items-center">
+                            {/* Type filter */}
+                            <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+                                {(['all', 'subscription', 'course'] as const).map((f) => (
+                                    <button key={f}
+                                        onClick={() => { setTypeFilter(f); setCurrentPage(1); }}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                            typeFilter === f
+                                                ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-sm"
+                                                : "text-slate-500 hover:text-slate-700"
+                                        )}>
+                                        {f}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Timeframe */}
+                            <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+                                {['7d', '30d', '3m', '6m', '1y', 'all'].map((tf) => (
+                                    <button key={tf}
+                                        onClick={() => { setTimeframe(tf); setCurrentPage(1); }}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                            timeframe === tf
+                                                ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-sm"
+                                                : "text-slate-500 hover:text-slate-700"
+                                        )}>
+                                        {tf}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative">
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                <Input
+                                    placeholder="Search user, plan, or course…"
+                                    className="pl-9 h-10 w-64 rounded-xl bg-slate-50 border-slate-200"
+                                    value={searchQuery}
+                                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                />
+                            </div>
+
+                            <Button variant="outline" className="h-10 w-10 p-0 rounded-xl border-slate-200 hover:bg-slate-50 transition-colors"
+                                onClick={fetchTransactions} disabled={isLoading}>
+                                <RefreshCw className={cn("w-4 h-4 text-slate-400", isLoading && "animate-spin")} />
+                            </Button>
+
+                            <Button variant="outline" className="h-10 w-10 p-0 rounded-xl border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                onClick={handleDownloadCSV}>
+                                <Download size={16} />
+                            </Button>
                         </div>
-                        <Button
-                            variant="outline"
-                            className="h-10 w-10 p-0 rounded-xl border-slate-200 hover:bg-slate-50 transition-colors"
-                            onClick={() => fetchTransactions()}
-                            disabled={isLoading}
-                        >
-                            <RefreshCw className={cn("w-4 h-4 text-slate-400", isLoading && "animate-spin")} />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-10 w-10 p-0 rounded-xl border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                            onClick={handleDownloadCSV}
-                        >
-                            <Download size={16} />
-                        </Button>
                     </div>
                 </div>
 
+                {/* Table */}
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] uppercase tracking-widest text-slate-400 font-black">
                             <tr>
                                 <th className="px-8 py-4">Customer</th>
+                                <th className="px-8 py-4">Type</th>
                                 <th className="px-8 py-4">Amount</th>
                                 <th className="px-8 py-4">Status</th>
                                 <th className="px-8 py-4">Method</th>
@@ -324,10 +441,11 @@ export default function PaymentsManager() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {paginatedTransactions.map((tx) => (
-                                <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                <tr key={`${tx.txn_type}-${tx.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                    {/* Customer */}
                                     <td className="px-8 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs flex-shrink-0">
                                                 {tx.profiles?.display_name?.charAt(0) || 'U'}
                                             </div>
                                             <div>
@@ -338,22 +456,39 @@ export default function PaymentsManager() {
                                             </div>
                                         </div>
                                     </td>
+
+                                    {/* Type badge + descriptor */}
+                                    <td className="px-8 py-4">
+                                        <div className="space-y-1">
+                                            <TypeBadge type={tx.txn_type} />
+                                            <p className="text-[10px] text-slate-400 font-bold">
+                                                {tx.txn_type === 'course'
+                                                    ? (tx.course_title || tx.course_id || '—')
+                                                    : (tx.plan_id ? `${tx.plan_id.toUpperCase()} PLAN` : '—')}
+                                            </p>
+                                        </div>
+                                    </td>
+
+                                    {/* Amount */}
                                     <td className="px-8 py-4">
                                         <div className="flex flex-col">
                                             <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                €{tx.currency === 'EUR' ? tx.amount : (Number(tx.amount) / ({ 'INR': 106.6, 'USD': 1.08, 'GBP': 0.86 }[tx.currency] || 1)).toFixed(2)}
+                                                €{tx.txn_type === 'course'
+                                                    ? Number(tx.amount_eur || tx.amount).toFixed(2)
+                                                    : toEur(tx.amount, tx.currency).toFixed(2)}
                                             </span>
-                                            {tx.currency !== 'EUR' && (
+                                            {tx.txn_type === 'subscription' && tx.currency !== 'EUR' && (
                                                 <span className="text-[9px] text-slate-400 font-bold uppercase">
-                                                    Captured: {tx.currency === 'INR' ? '₹' : tx.currency === 'USD' ? '$' : ''}{tx.amount}
+                                                    {tx.currency === 'INR' ? '₹' : tx.currency === 'USD' ? '$' : tx.currency === 'GBP' ? '£' : tx.currency === 'NGN' ? '₦' : `${tx.currency} `}{tx.amount} captured
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] text-slate-400 font-bold ml-1">{tx.plan_id ? `for ${tx.plan_id}` : ''}</span>
                                     </td>
-                                    <td className="px-8 py-4">
-                                        <StatusBadge status={tx.status} />
-                                    </td>
+
+                                    {/* Status */}
+                                    <td className="px-8 py-4"><StatusBadge status={tx.status} /></td>
+
+                                    {/* Method */}
                                     <td className="px-8 py-4">
                                         <div className="flex items-center gap-2">
                                             <ProviderIcon type={tx.payment_method} />
@@ -362,6 +497,8 @@ export default function PaymentsManager() {
                                             </span>
                                         </div>
                                     </td>
+
+                                    {/* Date */}
                                     <td className="px-8 py-4">
                                         <span className="text-xs font-bold text-slate-400">
                                             {format(new Date(tx.created_at), 'MMM d, yyyy')}
@@ -370,36 +507,43 @@ export default function PaymentsManager() {
                                             {format(new Date(tx.created_at), 'HH:mm')}
                                         </p>
                                     </td>
+
+                                    {/* Actions */}
                                     <td className="px-8 py-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             {tx.status === 'completed' && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                <Button variant="ghost" size="sm"
                                                     className="h-8 w-8 p-0 rounded-lg text-indigo-600 hover:bg-indigo-50"
-                                                    onClick={() => generateInvoice(tx, tx.profiles)}
-                                                    title="Download Invoice"
-                                                >
+                                                    onClick={() => handleDownloadInvoice(tx)}
+                                                    title="Download Invoice">
                                                     <FileText size={14} />
                                                 </Button>
                                             )}
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
+                                            <Button variant="ghost" size="sm"
                                                 className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:bg-rose-50"
-                                                onClick={() => handleDeleteTransaction(tx.id)}
-                                                title="Delete Transaction"
-                                            >
+                                                onClick={() => handleDeleteTransaction(tx)}
+                                                title="Delete Transaction">
                                                 <Trash2 size={14} />
                                             </Button>
                                         </div>
                                     </td>
                                 </tr>
                             ))}
-                            {transactions.length === 0 && (
+
+                            {filteredTransactions.length === 0 && !isLoading && (
                                 <tr>
-                                    <td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium">
-                                        No transactions found
+                                    <td colSpan={7} className="px-8 py-16 text-center">
+                                        <Package className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                                        <p className="text-slate-400 font-medium text-sm">No transactions found</p>
+                                    </td>
+                                </tr>
+                            )}
+
+                            {isLoading && (
+                                <tr>
+                                    <td colSpan={7} className="px-8 py-16 text-center">
+                                        <RefreshCw className="w-6 h-6 text-indigo-400 animate-spin mx-auto mb-2" />
+                                        <p className="text-slate-400 text-xs font-medium">Loading transactions…</p>
                                     </td>
                                 </tr>
                             )}
@@ -407,43 +551,28 @@ export default function PaymentsManager() {
                     </table>
                 </div>
 
-                {/* Pagination Controls */}
+                {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, transactions.length)} of {transactions.length} entries
+                            Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length}
                         </p>
                         <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={currentPage === 1}
-                                onClick={() => setCurrentPage(prev => prev - 1)}
-                                className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest"
-                            >
+                            <Button variant="outline" size="sm" disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(p => p - 1)}
+                                className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest">
                                 Previous
                             </Button>
-                            {[...Array(totalPages)].map((_, i) => (
-                                <Button
-                                    key={i}
-                                    variant={currentPage === i + 1 ? "default" : "outline"}
-                                    size="sm"
+                            {[...Array(Math.min(totalPages, 7))].map((_, i) => (
+                                <Button key={i} variant={currentPage === i + 1 ? "default" : "outline"} size="sm"
                                     onClick={() => setCurrentPage(i + 1)}
-                                    className={cn(
-                                        "w-9 h-9 p-0 rounded-xl text-[10px] font-black",
-                                        currentPage === i + 1 ? "bg-indigo-600" : ""
-                                    )}
-                                >
+                                    className={cn("w-9 h-9 p-0 rounded-xl text-[10px] font-black", currentPage === i + 1 ? "bg-indigo-600" : "")}>
                                     {i + 1}
                                 </Button>
                             ))}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={currentPage === totalPages}
-                                onClick={() => setCurrentPage(prev => prev + 1)}
-                                className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest"
-                            >
+                            <Button variant="outline" size="sm" disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(p => p + 1)}
+                                className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest">
                                 Next
                             </Button>
                         </div>

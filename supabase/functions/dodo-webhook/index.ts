@@ -150,13 +150,20 @@ serve(async (req: Request) => {
         else if (planId === 'explorer') tier = 'initiate';
 
         let expiryDate = new Date();
+        let usedDodoDate = false;
 
         if (data.next_billing_date) {
+            // Use Dodo's exact next billing timestamp — this is the precise moment
+            // the user will be charged next, so we use it as-is with no padding.
             expiryDate = new Date(data.next_billing_date);
+            usedDodoDate = true;
         } else if (data.current_period_end) {
-            expiryDate = new Date(data.current_period_end * 1000); // Unix timestamp
+            // Unix timestamp from Dodo (seconds)
+            expiryDate = new Date(data.current_period_end * 1000);
+            usedDodoDate = true;
         } else {
-            // Fallback: use duration from transaction metadata (set when creating the order)
+            // Fallback: manually calculate from transaction duration metadata.
+            // Add 2-day grace only here, because we don't have Dodo's exact date.
             const durationValue = parseInt(
                 txn.metadata?.duration_value ?? txn.duration_value ?? '1', 10
             ) || 1;
@@ -165,10 +172,12 @@ serve(async (req: Request) => {
             if (durationUnit === 'years') expiryDate.setFullYear(expiryDate.getFullYear() + durationValue);
             else if (durationUnit === 'days') expiryDate.setDate(expiryDate.getDate() + durationValue);
             else expiryDate.setMonth(expiryDate.getMonth() + durationValue);
+
+            // Grace period only on fallback — not when Dodo gives us the exact date
+            expiryDate.setDate(expiryDate.getDate() + 2);
         }
 
-        // 2-day grace period for webhook delivery delays
-        expiryDate.setDate(expiryDate.getDate() + 2);
+        console.log(`Expiry set to: ${expiryDate.toISOString()} (source: ${usedDodoDate ? 'dodo next_billing_date' : 'fallback calculation'})`);
 
         // ── Update profile ────────────────────────────────────────────────────────
         const { error: profileError } = await supabaseAdmin

@@ -121,18 +121,57 @@ export default function InvestorDashboard() {
                 return query.lte('created_at', to.toISOString());
             };
 
-            const [txRes, profileRes, sessionRes, ieltsRes] = await Promise.all([
+            // ── Paginate profiles to bypass Supabase's default 1000-row cap ──────
+            const fetchAllProfiles = async () => {
+                const PAGE = 1000;
+                let page = 0;
+                const all: any[] = [];
+                while (true) {
+                    const { data, error } = await applyFilter(
+                        supabase
+                            .from('profiles')
+                            .select('id,subscription_tier,selected_plan,country,created_at,email,last_sign_in_at,utm_source')
+                            .range(page * PAGE, (page + 1) * PAGE - 1)
+                    );
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break;
+                    page++;
+                }
+                return all;
+            };
+
+            // All-time student attempt counts — paginate session_registrations
+            const fetchAllRegistrations = async () => {
+                const PAGE = 1000;
+                let page = 0;
+                const all: any[] = [];
+                while (true) {
+                    const { data, error } = await supabase
+                        .from('session_registrations')
+                        .select('session_id, mock_sessions(exam_type)')
+                        .range(page * PAGE, (page + 1) * PAGE - 1);
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break;
+                    page++;
+                }
+                return all;
+            };
+
+            const [txRes, profiles, registrations, ieltsCountRes] = await Promise.all([
                 applyFilter(supabase.from('transactions').select('id,amount,currency,status,plan_id,created_at,user_id')
                     .neq('plan_id', 'explorer').neq('plan_id', 'STORE_ORDER')),
-                applyFilter(supabase.from('profiles').select('id,subscription_tier,selected_plan,country,created_at,email,last_sign_in_at,utm_source')),
-                applyFilter(supabase.from('tests').select('id,exam_type,created_at').eq('is_mock', true)),
-                applyFilter(supabase.from('mock_exam_submissions').select('id,created_at'))
+                fetchAllProfiles(),
+                fetchAllRegistrations(),
+                // IELTS attempts — just need the total count (no data needed)
+                supabase.from('mock_exam_submissions').select('id', { count: 'exact', head: true })
             ]);
 
             const txs = txRes.data || [];
-            const profiles = profileRes.data || [];
-            const sessions = sessionRes.data || [];
-            const ieltsSessions = ieltsRes.data || [];
+            const ieltsAttempts = ieltsCountRes.count || 0;
 
             // ── REVENUE ──────────────────────────────────────────────────
             const completed = txs.filter((t: any) => t.status === 'completed');
@@ -214,37 +253,60 @@ export default function InvestorDashboard() {
             const dau = profiles.filter((p: any) => p.last_sign_in_at && new Date(p.last_sign_in_at) >= oneDayAgo).length;
             const mau = profiles.filter((p: any) => p.last_sign_in_at && new Date(p.last_sign_in_at) >= thirtyDaysAgo).length;
 
-            // ── ACQUISITION SOURCES ───────────────────────────────────────
-            const sourceCounts = profiles.reduce((acc: any, p: any) => {
-                const s = p.utm_source || 'Organic/Direct';
-                acc[s] = (acc[s] || 0) + 1;
-                return acc;
-            }, {});
-            const acquisitionData = Object.entries(sourceCounts)
-                .sort((a: any, b: any) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([source, count]) => ({ source, count }));
-
-            // ── SESSIONS ─────────────────────────────────────────────────
-            const examCounts = sessions.reduce((acc: any, s: any) => {
-                const e = s.exam_type || 'Other';
-                acc[e] = (acc[e] || 0) + 1;
-                return acc;
-            }, {});
-            
-            // Inject IELTS mock exam submissions manually since they use a different table structure
-            if (ieltsSessions.length > 0) {
-                examCounts['IELTS'] = (examCounts['IELTS'] || 0) + ieltsSessions.length;
+            // ── MOCK SESSION ATTEMPTS (ALL TIME) ──────────────────────────
+            // Count actual student attempts per exam type from session_registrations
+            const examCounts: Record<string, number> = {};
+            registrations.forEach((r: any) => {
+                const examType = (r.mock_sessions as any)?.exam_type || 'Other';
+                examCounts[examType] = (examCounts[examType] || 0) + 1;
+            });
+            // Add IELTS attempts from mock_exam_submissions
+            if (ieltsAttempts > 0) {
+                examCounts['IELTS'] = (examCounts['IELTS'] || 0) + ieltsAttempts;
             }
+            const examData = Object.entries(examCounts)
+                .sort((a: any, b: any) => b[1] - a[1])
+                .map(([exam, count]) => ({ exam: exam.replace('-prep', '').toUpperCase(), count }));
 
-            const examData = Object.entries(examCounts).map(([exam, count]) => ({ exam: exam.replace('-prep', '').toUpperCase(), count }));
+            // ── ACQUISITION SOURCES ────────────────────────────────────────────────
+            // NOTE: Google OAuth users have utm_source=null (identical to untracked email
+            // signups), so signup method cannot be split from profiles alone.
+            // We show: tracked UTM sources + untracked bucket (Google OAuth + organic email).
+
+            const utmCounts: Record<string, number> = {};
+            let untrackedCount = 0;
+            profiles.forEach((p: any) => {
+                const src = p.utm_source;
+                if (!src || src.trim() === '') {
+                    untrackedCount++;
+                } else {
+                    utmCounts[src] = (utmCounts[src] || 0) + 1;
+                }
+            });
+
+            const trackedTotal = Object.values(utmCounts).reduce((a, b) => a + b, 0);
+
+            // Build list: untracked bucket first (largest), then sorted UTM sources
+            const acquisitionData: { source: string; count: number; partial?: boolean }[] = [
+                { source: '⬜ Untracked (Google/Organic)', count: untrackedCount },
+                ...Object.entries(utmCounts)
+                    .sort((a: any, b: any) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([source, count]) => ({ source, count: count as number, partial: true }))
+            ].filter(d => d.count > 0);
+
+            // % of all users with a tracked UTM source
+            const trackedEmailPct = totalUsers > 0
+                ? Math.round((trackedTotal / totalUsers) * 100)
+                : 0;
+
 
             setData({
                 mrrCurrent, mrrLast, mrrGrowth, arr, totalRevenue,
                 totalUsers, newThisMonth, userGrowth, payingUsers,
                 conversionRate, arpu, failureRate, failedTx,
                 monthlyRevenue, planData, topCountries, examData,
-                dau, mau, acquisitionData
+                dau, mau, acquisitionData, trackedEmailPct
             });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Failed to load investor data', description: err.message });
@@ -442,16 +504,33 @@ export default function InvestorDashboard() {
                     </div>
                 )}
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white mb-6">User Acquisition Channels</h3>
+                    <div className="flex items-start justify-between mb-5">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">User Acquisition Channels</h3>
+                        <div className="flex flex-col items-end gap-1">
+                            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
+                                ⚠ Partial Data
+                            </span>
+                            <span className="text-[8px] font-bold text-slate-400 text-right max-w-[150px] leading-tight">
+                                Only {data.trackedEmailPct}% of users have a tracked UTM source. Google OAuth + organic signups are grouped as "Untracked".
+                            </span>
+                        </div>
+                    </div>
                     <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={data.acquisitionData} layout="vertical" margin={{ top: 0, right: 0, left: 30, bottom: 0 }}>
+                        <BarChart data={data.acquisitionData} layout="vertical" margin={{ top: 0, right: 0, left: 40, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                             <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
-                            <YAxis type="category" dataKey="source" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
+                            <YAxis type="category" dataKey="source" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }} width={90} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Bar dataKey="count" name="Users" radius={[0, 8, 8, 0]} barSize={24} fill="#6366f1" />
+                            <Bar dataKey="count" name="Users" radius={[0, 8, 8, 0]} barSize={20}>
+                                {data.acquisitionData.map((d: any, i: number) => (
+                                    <Cell key={i} fill={d.partial ? '#c7d2fe' : CHART_COLORS[i % CHART_COLORS.length]} />
+                                ))}
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
+                    <p className="text-[8px] font-bold text-slate-300 mt-3">
+                        Colored bars = users who signed up via a tracked UTM link. "Untracked" = Google OAuth + organic/direct visitors.
+                    </p>
                 </div>
             </div>
 

@@ -39,6 +39,7 @@ interface QuestionReport {
         display_name: string;
         email: string;
     };
+    mock_session_title?: string;
 }
 
 export default function QuestionReportManager() {
@@ -65,8 +66,8 @@ export default function QuestionReportManager() {
 
             if (statsError) throw statsError;
 
-            const pending = allReports?.filter(r => r.status === 'pending').length || 0;
-            const resolved = allReports?.filter(r => r.status === 'resolved').length || 0;
+            const pending = allReports?.filter((r: any) => r.status === 'pending').length || 0;
+            const resolved = allReports?.filter((r: any) => r.status === 'resolved').length || 0;
             setStats({ pending, resolved });
 
             // Fetch pending reports for table
@@ -77,7 +78,30 @@ export default function QuestionReportManager() {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setReports(data || []);
+            
+            const enhancedData = await Promise.all((data || []).map(async (report: any) => {
+                if (report.source_table === 'session_questions') {
+                    try {
+                        const { data: sqData } = await supabase
+                            .from('session_questions')
+                            .select('session_id, mock_sessions(title)')
+                            .eq('id', report.master_question_id)
+                            .maybeSingle();
+                        
+                        if (sqData) {
+                            return {
+                                ...report,
+                                mock_session_title: (sqData.mock_sessions as any)?.title || 'Unknown Mock'
+                            };
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch mock session title", e);
+                    }
+                }
+                return report;
+            }));
+
+            setReports(enhancedData);
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         } finally {
@@ -228,9 +252,16 @@ export default function QuestionReportManager() {
                                         <p className="text-[10px] text-slate-400">{report.profiles?.email}</p>
                                     </TableCell>
                                     <TableCell>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${report.source_table === 'practice_questions' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
-                                            {report.source_table.replace('_', ' ')}
-                                        </span>
+                                        <div className="flex flex-col items-start gap-1">
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${report.source_table === 'practice_questions' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                                                {report.source_table.replace('_', ' ')}
+                                            </span>
+                                            {report.source_table === 'session_questions' && report.mock_session_title && (
+                                                <span className="text-[10px] text-slate-500 font-semibold truncate max-w-[150px]" title={report.mock_session_title}>
+                                                    Mock: {report.mock_session_title}
+                                                </span>
+                                            )}
+                                        </div>
                                     </TableCell>
                                     <TableCell className="max-w-xs">
                                         <p className="text-sm text-slate-600 italic line-clamp-2">"{report.reason}"</p>
@@ -283,6 +314,12 @@ export default function QuestionReportManager() {
                                     <Label className="text-xs text-slate-500 uppercase tracking-wider">Reason</Label>
                                     <p className="font-medium text-rose-600">{selectedReport?.reason}</p>
                                 </div>
+                                {selectedReport?.source_table === 'session_questions' && selectedReport?.mock_session_title && (
+                                    <div className="col-span-2 pt-2 mt-2 border-t border-slate-200">
+                                        <Label className="text-xs text-slate-500 uppercase tracking-wider mb-1 block">Source</Label>
+                                        <p className="text-sm text-slate-700">Mock Session: <span className="font-semibold">{selectedReport.mock_session_title}</span></p>
+                                    </div>
+                                )}
                                 {selectedReport?.details && (
                                     <div className="col-span-2 pt-2 mt-2 border-t border-slate-200">
                                         <Label className="text-xs text-slate-500 uppercase tracking-wider mb-1 block">User Details</Label>

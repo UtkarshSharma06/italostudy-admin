@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Coupon {
     id: string;
@@ -21,6 +22,7 @@ interface Coupon {
     used_count: number;
     valid_until: string | null;
     is_active: boolean;
+    course_id: string | null;
 }
 
 export default function CouponsManager() {
@@ -33,6 +35,9 @@ export default function CouponsManager() {
     const [newType, setNewType] = useState<'percent' | 'fixed'>('percent');
     const [newValue, setNewValue] = useState('');
     const [newLimit, setNewLimit] = useState('');
+    const [newCourseId, setNewCourseId] = useState('all');
+
+    const [courses, setCourses] = useState<{ id: string, title: string }[]>([]);
 
     const [couponMessage, setCouponMessage] = useState('');
     const [isSavingMessage, setIsSavingMessage] = useState(false);
@@ -40,7 +45,17 @@ export default function CouponsManager() {
     useEffect(() => {
         fetchCoupons();
         fetchPricingMessage();
+        fetchCourses();
     }, []);
+
+    const fetchCourses = async () => {
+        try {
+            const { data } = await supabase.from('courses').select('id, title').order('created_at', { ascending: false });
+            if (data) setCourses(data);
+        } catch (err) {
+            console.error('Failed to fetch courses', err);
+        }
+    };
 
     const fetchPricingMessage = async () => {
         try {
@@ -113,6 +128,7 @@ export default function CouponsManager() {
                 discount_type: newType,
                 discount_value: parseFloat(newValue),
                 max_uses: newLimit ? parseInt(newLimit) : null,
+                course_id: newCourseId === 'all' ? null : newCourseId,
             });
 
             if (error) throw error;
@@ -244,6 +260,21 @@ export default function CouponsManager() {
                             </div>
                         </div>
 
+                        <div className="space-y-2">
+                            <Label>Target Course</Label>
+                            <Select value={newCourseId} onValueChange={setNewCourseId}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select target course" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All / General / Subscription</SelectItem>
+                                    {courses.map(c => (
+                                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <Button
                             onClick={handleCreate}
                             disabled={isCreating || !newCode || !newValue}
@@ -315,6 +346,9 @@ export default function CouponsManager() {
                                         <span className="flex items-center gap-1.5"><Tag size={12} /> {coupon.used_count} used</span>
                                         {coupon.max_uses && (
                                             <span className="flex items-center gap-1.5"><Users size={12} /> Limit: {coupon.max_uses}</span>
+                                        )}
+                                        {coupon.course_id && (
+                                            <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider">Course Specific</span>
                                         )}
                                     </div>
                                 </div>

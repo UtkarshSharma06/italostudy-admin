@@ -14,7 +14,8 @@ import {
     ArrowLeft,
     Save,
     Eye,
-    MousePointer
+    MousePointer,
+    ShoppingBag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import ContentSEOAnalyzer from '@/components/admin/blog/ContentSEOAnalyzer';
 import MediaSEOManager from '@/components/admin/blog/MediaSEOManager';
 import FAQBuilder from '@/components/admin/blog/FAQBuilder';
 import CTABuilder from '@/components/admin/blog/CTABuilder';
+import StoreAdsSelector from '@/components/admin/blog/StoreAdsSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { Editor } from '@tinymce/tinymce-react';
 
@@ -120,6 +122,7 @@ export default function BlogAdminDashboard({ onBack, post, onSaveSuccess }: Blog
         { id: 'media', label: 'Media & Social', icon: ImageIcon },
         { id: 'faqs', label: 'FAQs & Schema', icon: MessageSquare },
         { id: 'cta', label: 'CTA Builder', icon: MousePointer },
+        { id: 'store_ads', label: 'Store Ads', icon: ShoppingBag },
         { id: 'settings', label: 'Settings', icon: Settings },
     ];
 
@@ -383,6 +386,17 @@ export default function BlogAdminDashboard({ onBack, post, onSaveSuccess }: Blog
                                     exit={{ opacity: 0, x: -20 }}
                                 >
                                     <CTABuilder formData={formData} setFormData={setFormData} />
+                                </motion.div>
+                            )}
+
+                            {activeTab === 'store_ads' && (
+                                <motion.div
+                                    key="store_ads"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                >
+                                    <StoreAdsSelector formData={formData} setFormData={setFormData} />
                                 </motion.div>
                             )}
 

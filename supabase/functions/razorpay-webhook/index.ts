@@ -50,8 +50,8 @@ serve(async (req: Request) => {
 
         const event = JSON.parse(payloadText);
 
-        // Razorpay Subscription Events: subscription.charged, subscription.authenticated
-        if (event.event === 'payment.captured' || event.event === 'subscription.charged') {
+        // Razorpay Subscription Events: subscription.activated, subscription.charged, payment.captured
+        if (event.event === 'payment.captured' || event.event === 'subscription.charged' || event.event === 'subscription.activated') {
             const data = event.payload.payment?.entity || event.payload.subscription?.entity;
             const transactionId = data.notes?.transaction_id;
             
@@ -93,10 +93,15 @@ serve(async (req: Request) => {
             // For Subscriptions, read the next billing date from Razorpay payload if available
             const subEntity = event.payload.subscription?.entity;
             if (subEntity && subEntity.charge_at) {
+                // Use Razorpay's exact next charge timestamp (UTC)
                 expiryDate = new Date(subEntity.charge_at * 1000);
+                console.log('📅 Using Razorpay charge_at for expiry:', expiryDate.toISOString());
             } else {
-                const durationValue = parseInt(txn.metadata?.duration_value || '1', 10);
-                const durationUnit = txn.metadata?.duration_unit || 'months';
+                // Read from transaction COLUMNS (not metadata — that's a different field)
+                const durationValue = txn.duration_value || parseInt(txn.metadata?.duration_value || '1', 10);
+                const durationUnit  = txn.duration_unit  || txn.metadata?.duration_unit || 'months';
+
+                console.log('📅 Calculating expiry from duration:', durationValue, durationUnit);
 
                 if (durationUnit === 'years') {
                     expiryDate.setFullYear(expiryDate.getFullYear() + durationValue);

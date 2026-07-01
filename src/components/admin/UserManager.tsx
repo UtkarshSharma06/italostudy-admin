@@ -109,10 +109,31 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
     const fetchUsers = async () => {
         setIsLoading(true);
         try {
-            const { data, error } = await (supabase as any).rpc('get_admin_users');
+            let allUsers: Profile[] = [];
+            let from = 0;
+            const step = 1000;
+            let hasMore = true;
 
-            if (error) throw error;
-            setUsers(data as Profile[]);
+            while (hasMore) {
+                const { data, error } = await (supabase as any)
+                    .rpc('get_admin_users')
+                    .range(from, from + step - 1);
+
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    allUsers = [...allUsers, ...(data as Profile[])];
+                    if (data.length < step) {
+                        hasMore = false;
+                    } else {
+                        from += step;
+                    }
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            setUsers(allUsers);
         } catch (error: any) {
             toast({
                 title: "Error fetching users",
@@ -348,270 +369,264 @@ export default function UserManager({ permissions, isSuperAdmin }: { permissions
 
         return (
             <div className="space-y-6">
-            <div className="grid gap-4">
-                {paginatedUsers.map((user) => (
-                    <div
-                        key={user.id}
-                        className={`
-                            group flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl border transition-all
-                            ${user.is_banned ? 'bg-destructive/5 border-destructive/20' : 'bg-white dark:bg-card border-slate-100 dark:border-border hover:border-indigo-200'}
-                        `}
-                    >
-                        <div className="flex items-center gap-4 w-full md:w-auto">
-                            <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-                                <AvatarImage src={user.avatar_url || undefined} />
-                                <AvatarFallback className="font-bold bg-indigo-50 text-indigo-600">
-                                    {(user.display_name || user.username || '?')[0].toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-slate-900 dark:text-slate-100">
-                                        {user.display_name || 'Unknown'}
-                                    </h3>
-                                    {user.role === 'admin' && (
-                                        <Badge variant="default" className="bg-indigo-600 text-[10px] uppercase">Admin</Badge>
-                                    )}
-                                    {user.is_banned && (
-                                        <Badge variant="destructive" className="text-[10px] uppercase">Banned</Badge>
-                                    )}
-                                    {user.email_verified ? (
-                                        <Badge variant="outline" className="border-emerald-200 text-emerald-600 bg-emerald-50 text-[9px] font-black uppercase tracking-widest px-1.5 h-4 flex items-center gap-1">
-                                            <CheckCircle2 className="w-2.5 h-2.5" /> Verified
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="outline" className="border-slate-200 text-slate-400 bg-slate-50 text-[9px] font-black uppercase tracking-widest px-1.5 h-4 flex items-center gap-1">
-                                            <ShieldAlert className="w-2.5 h-2.5" /> Unverified
-                                        </Badge>
-                                    )}
-                                    <div className="flex items-center gap-1">
-                                        {user.auth_providers?.map(provider => (
-                                            <Badge key={provider} variant="secondary" className="text-[8px] font-bold uppercase tracking-tight h-4 px-1 bg-slate-100/50">
-                                                {provider === 'google' ? 'Google' : 'Email'}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
-                                    <div
-                                        className="flex items-center gap-1 font-mono text-[9px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer hover:bg-slate-200 transition-colors"
-                                        onClick={() => copyToClipboard(user.id, 'User ID')}
-                                        title="Click to copy User ID"
-                                    >
-                                        <Hash className="w-2.5 h-2.5" />
-                                        {user.id.slice(0, 8)}...
-                                        <Copy className="w-2.5 h-2.5 ml-1 opacity-50" />
-                                    </div>
-                                    <span className="font-mono text-xs opacity-70">@{user.username || 'user'}</span>
-                                    {user.email && (
-                                        <span 
-                                            className={cn("text-xs opacity-40", !canViewPII && "cursor-help")}
-                                            onClick={() => {
-                                                if (!canViewPII) {
-                                                    toast({ 
-                                                        title: "Access Restricted", 
-                                                        description: "Viewing full PII (Email) is not allowed by super admin.", 
-                                                        variant: "destructive" 
-                                                    });
-                                                }
-                                            }}
-                                        >
-                                            {canViewPII ? user.email : user.email.replace(/(.{3}).*@/, '$1***@')}
-                                        </span>
-                                    )}
-                                    {user.phone_number && (
-                                        <div 
-                                            className="flex items-center gap-1 font-mono text-[9px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer hover:bg-slate-200 transition-colors"
-                                            onClick={() => copyToClipboard(user.phone_number!, 'Phone Number')}
-                                            title="Click to copy Phone Number"
-                                        >
-                                            <Phone className="w-2.5 h-2.5" />
-                                            {user.phone_number}
-                                            <Copy className="w-2.5 h-2.5 ml-1 opacity-50" />
+                <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-border bg-white dark:bg-card shadow-sm">
+                    <table className="w-full text-left border-collapse min-w-[1200px]">
+                        <thead>
+                            <tr className="border-b border-slate-100 dark:border-border bg-slate-50/50 dark:bg-slate-900/20">
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">#</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">User</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Email</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Phone</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">IP & Loc</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Auth</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 w-64">Plan & Duration</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-border">
+                            {paginatedUsers.map((user, index) => (
+                                <tr key={user.id} className={cn("transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-900/20 group", user.is_banned && "bg-destructive/5")}>
+                                    {/* Index */}
+                                    <td className="p-4 text-xs text-slate-400 font-mono">
+                                        {(currentPage - 1) * itemsPerPage + index + 1}
+                                    </td>
+                                    
+                                    {/* Name & ID */}
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-8 w-8 border border-white shadow-sm">
+                                                <AvatarImage src={user.avatar_url || undefined} />
+                                                <AvatarFallback className="font-bold text-xs bg-indigo-50 text-indigo-600">
+                                                    {(user.display_name || user.username || '?')[0].toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{user.display_name || 'Unknown'}</span>
+                                                    {user.role === 'admin' && <Badge className="bg-indigo-600 text-[8px] uppercase px-1 py-0 h-3">Admin</Badge>}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[10px] text-muted-foreground font-mono">@{user.username || 'user'}</span>
+                                                    <span className="text-[9px] text-slate-300 font-mono cursor-pointer hover:text-indigo-500" onClick={() => copyToClipboard(user.id, 'User ID')} title="Copy ID">
+                                                        #{user.id.slice(0, 6)}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
-                                    {user.last_ip && (
-                                        <div className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded text-[9px] font-bold text-indigo-600/70">
-                                            <Globe className="w-3 h-3" />
-                                            <span
-                                                className={cn("text-[9px] font-bold", !canViewPII && "cursor-help")}
+                                    </td>
+
+                                    {/* Email */}
+                                    <td className="p-4">
+                                        {user.email ? (
+                                            <span 
+                                                className={cn("text-xs", !canViewPII && "cursor-help text-slate-400", canViewPII && "text-slate-600 dark:text-slate-300")}
                                                 onClick={() => {
                                                     if (!canViewPII) {
-                                                        toast({ 
-                                                            title: "Access Restricted", 
-                                                            description: "Viewing IP addresses is not allowed by super admin.", 
-                                                            variant: "destructive" 
-                                                        });
+                                                        toast({ title: "Access Restricted", description: "Viewing full PII is not allowed.", variant: "destructive" });
                                                     }
                                                 }}
                                             >
-                                                {canViewPII ? user.last_ip : '***.***.***.***'}
+                                                {canViewPII ? user.email : user.email.replace(/(.{3}).*@/, '$1***@')}
                                             </span>
-                                            {user.country && <span className="ml-1 opacity-80 decoration-dotted underline underline-offset-2">({user.country})</span>}
+                                        ) : (
+                                            <span className="text-xs text-slate-400 italic">No Email</span>
+                                        )}
+                                    </td>
+
+                                    {/* Phone */}
+                                    <td className="p-4">
+                                        {user.phone_number ? (
+                                            <span className="text-xs font-mono text-slate-600 dark:text-slate-300 cursor-pointer hover:text-indigo-600" onClick={() => copyToClipboard(user.phone_number!, 'Phone')}>
+                                                {user.phone_number}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-slate-400 italic">-</span>
+                                        )}
+                                    </td>
+
+                                    {/* IP & Country */}
+                                    <td className="p-4">
+                                        {user.last_ip ? (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className={cn("text-xs font-mono text-slate-600 dark:text-slate-300", !canViewPII && "cursor-help text-slate-400")}
+                                                    onClick={() => {
+                                                        if (!canViewPII) toast({ title: "Access Restricted", description: "Viewing IP is not allowed.", variant: "destructive" });
+                                                    }}>
+                                                    {canViewPII ? user.last_ip : '***.***.***.***'}
+                                                </span>
+                                                {user.country && <span className="text-[10px] text-slate-400">{user.country}</span>}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-400 italic">-</span>
+                                        )}
+                                    </td>
+
+                                    {/* Auth Method */}
+                                    <td className="p-4">
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            {user.auth_providers?.map(provider => (
+                                                <Badge key={provider} variant="secondary" className="text-[9px] uppercase tracking-wider bg-slate-100/50">
+                                                    {provider === 'google' ? 'Google' : 'Email'}
+                                                </Badge>
+                                            ))}
                                         </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                    </td>
 
-                        <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-                            {/* Subscription Tier + Duration Selector */}
-                            <div className="flex flex-col items-end gap-1.5">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan & Duration</span>
-                                <div className="flex items-center gap-1.5">
-                                    {/* Plan selector */}
-                                    <select
-                                        value={userPendingTiers[user.id] ?? (user.subscription_tier || 'free')}
-                                        onChange={(e) => setUserPendingTiers(prev => ({ ...prev, [user.id]: e.target.value }))}
-                                        disabled={user.role === 'admin'}
-                                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <option value="free">Free/Explorer</option>
-                                        <option value="pro">Pro Plan</option>
-                                        <option value="global">Global Admission</option>
-                                    </select>
+                                    {/* Status (Verified/Banned) */}
+                                    <td className="p-4">
+                                        <div className="flex flex-col gap-1 items-start">
+                                            {user.is_banned && (
+                                                <Badge variant="destructive" className="text-[9px] uppercase">Banned</Badge>
+                                            )}
+                                            {user.email_verified ? (
+                                                <Badge variant="outline" className="border-emerald-200 text-emerald-600 bg-emerald-50 text-[9px] uppercase tracking-wider px-1.5 h-4 flex items-center gap-1">
+                                                    <CheckCircle2 className="w-2.5 h-2.5" /> Verified
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="border-slate-200 text-slate-400 bg-slate-50 text-[9px] uppercase tracking-wider px-1.5 h-4 flex items-center gap-1">
+                                                    <ShieldAlert className="w-2.5 h-2.5" /> Unverified
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </td>
 
-                                    {/* Duration selector — only shown for paid plans */}
-                                    {(userPendingTiers[user.id] ?? user.subscription_tier) !== 'free' &&
-                                     (userPendingTiers[user.id] ?? user.subscription_tier) !== 'initiate' && (
-                                        <select
-                                            value={userDurations[user.id] ?? 1}
-                                            onChange={(e) => setUserDurations(prev => ({ ...prev, [user.id]: Number(e.target.value) }))}
-                                            className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        >
-                                            <option value={1}>1 Month</option>
-                                            <option value={3}>3 Months</option>
-                                            <option value={6}>6 Months</option>
-                                            <option value={12}>1 Year</option>
-                                        </select>
-                                    )}
+                                    {/* Plan & Duration */}
+                                    <td className="p-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <select
+                                                    value={userPendingTiers[user.id] ?? (user.subscription_tier || 'free')}
+                                                    onChange={(e) => setUserPendingTiers(prev => ({ ...prev, [user.id]: e.target.value }))}
+                                                    disabled={user.role === 'admin'}
+                                                    className="text-[10px] font-bold px-2 py-1 rounded border border-slate-200 bg-white focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                                                >
+                                                    <option value="free">Free/Explorer</option>
+                                                    <option value="pro">Pro Plan</option>
+                                                    <option value="global">Global Admission</option>
+                                                </select>
 
-                                    {/* Apply button — only shown when something changed */}
-                                    {(userPendingTiers[user.id] !== undefined || userDurations[user.id] !== undefined) && !user.is_banned && (
-                                        <button
-                                            onClick={() => {
-                                                const tier = userPendingTiers[user.id] ?? user.subscription_tier ?? 'free';
-                                                const months = userDurations[user.id] ?? 1;
-                                                handleUpdateTier(user.id, tier, user.display_name || user.username || 'User', months);
-                                            }}
-                                            className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm"
-                                        >
-                                            Apply
-                                        </button>
-                                    )}
-                                </div>
+                                                {(userPendingTiers[user.id] ?? user.subscription_tier) !== 'free' &&
+                                                 (userPendingTiers[user.id] ?? user.subscription_tier) !== 'initiate' && (
+                                                    <select
+                                                        value={userDurations[user.id] ?? 1}
+                                                        onChange={(e) => setUserDurations(prev => ({ ...prev, [user.id]: Number(e.target.value) }))}
+                                                        className="text-[10px] font-bold px-2 py-1 rounded border border-indigo-200 bg-indigo-50 text-indigo-700 focus:ring-1 focus:ring-indigo-500"
+                                                    >
+                                                        <option value={1}>1 Mo</option>
+                                                        <option value={3}>3 Mo</option>
+                                                        <option value={6}>6 Mo</option>
+                                                        <option value={12}>1 Yr</option>
+                                                    </select>
+                                                )}
 
-                                {/* Expiry date badge */}
-                                {user.subscription_expiry_date ? (
-                                    <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
-                                        new Date(user.subscription_expiry_date) < new Date()
-                                            ? 'text-red-500 bg-red-50'
-                                            : 'text-emerald-600 bg-emerald-50'
-                                    }`}>
-                                        {new Date(user.subscription_expiry_date) < new Date() ? '⚠ Expired ' : 'Until '}
-                                        {new Date(user.subscription_expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
-                                    </span>
-                                ) : (
-                                    user.subscription_tier && user.subscription_tier !== 'initiate' && user.subscription_tier !== 'free' && (
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">No Expiry Set ⚠</span>
-                                    )
-                                )}
-                            </div>
+                                                {(userPendingTiers[user.id] !== undefined || userDurations[user.id] !== undefined) && !user.is_banned && (
+                                                    <button
+                                                        onClick={() => {
+                                                            const tier = userPendingTiers[user.id] ?? user.subscription_tier ?? 'free';
+                                                            const months = userDurations[user.id] ?? 1;
+                                                            handleUpdateTier(user.id, tier, user.display_name || user.username || 'User', months);
+                                                        }}
+                                                        className="text-[9px] font-black uppercase px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                                    >
+                                                        Apply
+                                                    </button>
+                                                )}
+                                            </div>
+                                            
+                                            {user.subscription_expiry_date ? (
+                                                <span className={cn("text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded w-max", new Date(user.subscription_expiry_date) < new Date() ? 'text-red-500 bg-red-50' : 'text-emerald-600 bg-emerald-50')}>
+                                                    {new Date(user.subscription_expiry_date) < new Date() ? '⚠ Expired ' : 'Until '}
+                                                    {new Date(user.subscription_expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                                </span>
+                                            ) : (
+                                                user.subscription_tier && user.subscription_tier !== 'initiate' && user.subscription_tier !== 'free' && (
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded w-max">No Expiry ⚠</span>
+                                                )
+                                            )}
+                                        </div>
+                                    </td>
 
-                            {/* Community Toggler */}
-                            <div className="flex flex-col items-end gap-1">
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold uppercase tracking-widest ${user.community_enabled ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                        {user.community_enabled ? 'Chat Active' : 'Chat Restricted'}
-                                    </span>
-                                    <Switch
-                                        checked={user.community_enabled}
-                                        onCheckedChange={() => handleToggleCommunity(user.id, user.community_enabled, user.display_name || user.username || 'User')}
-                                        disabled={user.role === 'admin'}
-                                    />
-                                </div>
-                            </div>
+                                    {/* Actions */}
+                                    <td className="p-4">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <div className="flex items-center gap-1 mr-2" title={user.community_enabled ? "Chat Active" : "Chat Restricted"}>
+                                                <Switch
+                                                    checked={user.community_enabled}
+                                                    onCheckedChange={() => handleToggleCommunity(user.id, user.community_enabled, user.display_name || user.username || 'User')}
+                                                    disabled={user.role === 'admin'}
+                                                    className="scale-75 data-[state=checked]:bg-emerald-500"
+                                                />
+                                            </div>
 
-                            {/* Ban Button */}
-                            <Button
-                                variant={user.is_banned ? "default" : "ghost"}
-                                size="sm"
-                                className={user.is_banned ? "bg-emerald-600 hover:bg-emerald-700" : "text-destructive hover:bg-destructive/10"}
-                                onClick={() => {
-                                    if (!canEdit) {
-                                        toast({ title: "Access Denied", description: "Modifying user status is not allowed by super admin.", variant: "destructive" });
-                                        return;
-                                    }
-                                    handleToggleBan(user.id, user.is_banned, user.display_name || user.username || 'User');
-                                }}
-                                disabled={user.role === 'admin'}
-                            >
-                                {user.is_banned ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
-                                {user.is_banned ? "Unban User" : "Ban"}
-                            </Button>
+                                            <Button
+                                                variant="ghost" size="icon"
+                                                className={cn("h-8 w-8 rounded-lg", user.is_banned ? "text-emerald-600 hover:bg-emerald-50" : "text-slate-400 hover:text-orange-600 hover:bg-orange-50")}
+                                                onClick={() => {
+                                                    if (!canEdit) return toast({ title: "Access Denied", description: "Not allowed.", variant: "destructive" });
+                                                    handleToggleBan(user.id, user.is_banned, user.display_name || user.username || 'User');
+                                                }}
+                                                disabled={user.role === 'admin'}
+                                                title={user.is_banned ? "Unban User" : "Ban User"}
+                                            >
+                                                {user.is_banned ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                                            </Button>
 
-                            {/* Delete Button */}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                onClick={() => {
-                                    if (!canDelete) {
-                                        toast({ title: "Access Denied", description: "Deleting users is not allowed by super admin.", variant: "destructive" });
-                                        return;
-                                    }
-                                    handleDeleteUser(user.id, user.display_name || user.username || 'User');
-                                }}
-                                disabled={user.role === 'admin'}
-                                title="Permanently Delete User"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </Button>
+                                            {user.last_ip && (
+                                                <Button
+                                                    variant="ghost" size="icon"
+                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                                    onClick={() => {
+                                                        if (!canDelete) return toast({ title: "Access Denied", description: "Not allowed.", variant: "destructive" });
+                                                        handleBanIP(user.last_ip!, user.display_name || user.username || 'User');
+                                                    }}
+                                                    disabled={user.role === 'admin'}
+                                                    title="Block IP"
+                                                >
+                                                    <ShieldX className="w-4 h-4" />
+                                                </Button>
+                                            )}
 
-                            {/* Ban IP Button */}
-                            {user.last_ip && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                    onClick={() => {
-                                        if (!canDelete) {
-                                            toast({ title: "Access Denied", description: "IP Blocking is not allowed by super admin.", variant: "destructive" });
-                                            return;
-                                        }
-                                        handleBanIP(user.last_ip!, user.display_name || user.username || 'User');
-                                    }}
-                                    disabled={user.role === 'admin'}
-                                    title="Block this IP Address"
-                                >
-                                    <ShieldX className="w-4 h-4" />
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-            {totalPages > 1 && (
-                <div className="p-6 border border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-card rounded-[2rem] mt-6 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex-1 hidden md:block">
-                        Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, userList.length)} of {userList.length} entries
-                    </p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest">Prev</Button>
-                        {[...Array(totalPages)].map((_, i) => {
-                            if (totalPages > 7 && i !== 0 && i !== totalPages - 1 && Math.abs(i + 1 - currentPage) > 1) {
-                                if (i === 1 && currentPage > 3) return <span key={i} className="px-2 py-1 text-slate-400">...</span>;
-                                if (i === totalPages - 2 && currentPage < totalPages - 2) return <span key={i} className="px-2 py-1 text-slate-400">...</span>;
-                                return null;
-                            }
-                            return (
-                                <Button key={i} variant={currentPage === i + 1 ? "default" : "outline"} size="sm" onClick={() => setCurrentPage(i + 1)} className={cn("w-9 h-9 p-0 rounded-xl text-[10px] font-black", currentPage === i + 1 ? "bg-indigo-600 text-white" : "")}>{i + 1}</Button>
-                            )
-                        })}
-                        <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest">Next</Button>
-                    </div>
+                                            <Button
+                                                variant="ghost" size="icon"
+                                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                                onClick={() => {
+                                                    if (!canDelete) return toast({ title: "Access Denied", description: "Not allowed.", variant: "destructive" });
+                                                    handleDeleteUser(user.id, user.display_name || user.username || 'User');
+                                                }}
+                                                disabled={user.role === 'admin'}
+                                                title="Delete User"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-            )}
+                {totalPages > 1 && (
+                    <div className="p-6 border border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-card rounded-[2rem] mt-6 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex-1 hidden md:block">
+                            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, userList.length)} of {userList.length} entries
+                        </p>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest">Prev</Button>
+                            {[...Array(totalPages)].map((_, i) => {
+                                if (totalPages > 7 && i !== 0 && i !== totalPages - 1 && Math.abs(i + 1 - currentPage) > 1) {
+                                    if (i === 1 && currentPage > 3) return <span key={i} className="px-2 py-1 text-slate-400">...</span>;
+                                    if (i === totalPages - 2 && currentPage < totalPages - 2) return <span key={i} className="px-2 py-1 text-slate-400">...</span>;
+                                    return null;
+                                }
+                                return (
+                                    <Button key={i} variant={currentPage === i + 1 ? "default" : "outline"} size="sm" onClick={() => setCurrentPage(i + 1)} className={cn("w-9 h-9 p-0 rounded-xl text-[10px] font-black", currentPage === i + 1 ? "bg-indigo-600 text-white" : "")}>{i + 1}</Button>
+                                )
+                            })}
+                            <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="rounded-xl h-9 px-4 text-[10px] font-black uppercase tracking-widest">Next</Button>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }

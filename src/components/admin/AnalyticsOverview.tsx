@@ -12,6 +12,7 @@ import {
     UserCheck,
     ArrowUpRight,
     ArrowDownRight,
+    Award,
     Loader2,
     LineChart,
     ShieldCheck,
@@ -72,21 +73,192 @@ export default function AnalyticsOverview() {
         setIsLoading(true);
         setError(null);
         try {
-            console.log("Fetching admin dashboard stats...");
-            const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
+            const PAGE = 1000;
 
-            if (error) {
-                console.error("RPC Error:", error);
-                throw error;
-            }
+            // ── Paginated profiles (only columns needed for stats) ──────────────
+            const fetchAllProfiles = async () => {
+                let page = 0;
+                const all: any[] = [];
+                while (true) {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('id, created_at, last_sign_in_at, utm_source, subscription_tier, subscription_expiry_date, is_banned')
+                        .range(page * PAGE, (page + 1) * PAGE - 1);
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break;
+                    page++;
+                }
+                return all;
+            };
 
-            console.log("Dashboard stats received:", data);
+            // ── Paginated practice responses — used for total_practice_sessions stat only ──
+            const fetchAllPractice = async () => {
+                let page = 0;
+                const all: any[] = [];
+                while (true) {
+                    const { data, error } = await supabase
+                        .from('user_practice_responses')
+                        .select('exam_type')
+                        .range(page * PAGE, (page + 1) * PAGE - 1);
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break;
+                    page++;
+                }
+                return all;
+            };
 
-            if (data) {
-                setStats(data as unknown as DashboardStats);
-            } else {
-                setStats(null);
-            }
+            // ── Paginated COMPLETED tests — primary source for exam popularity ──
+            // This is the most reliable source: every submitted test records exam_type
+            // and total_questions, covering both practice and mock for all exam types.
+            const fetchAllCompletedTests = async () => {
+                let page = 0;
+                const all: any[] = [];
+                while (true) {
+                    const { data, error } = await supabase
+                        .from('tests')
+                        .select('exam_type, total_questions')
+                        .eq('status', 'completed')
+                        .range(page * PAGE, (page + 1) * PAGE - 1);
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break;
+                    page++;
+                }
+                return all;
+            };
+
+            const [profiles, practiceData, completedTestsData, recentTxRes] = await Promise.all([
+                fetchAllProfiles(),
+                fetchAllPractice(),
+                fetchAllCompletedTests(),
+                // Recent completed transactions for activity feed
+                supabase.from('transactions')
+                    .select('id, plan_id, created_at, profiles(display_name, email)')
+                    .neq('plan_id', 'explorer')
+                    .neq('plan_id', 'STORE_ORDER')
+                    .eq('status', 'completed')
+                    .order('created_at', { ascending: false })
+                    .limit(10)
+            ]);
+
+            const now = new Date();
+            const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+            const oneWeekAgo  = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000);
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            // ── Core counts ─────────────────────────────────────────────────────
+            const total_users     = profiles.length;
+            const new_users_today = profiles.filter((p: any) => new Date(p.created_at) >= todayStart).length;
+
+            // Active subscriptions: global plan AND expiry date is in the future (or no expiry = lifetime)
+            const active_subscriptions = profiles.filter((p: any) => {
+                const tier = (p.subscription_tier || '').toLowerCase();
+                if (tier !== 'global') return false;
+                if (!p.subscription_expiry_date) return true; // lifetime / no-expiry plan
+                return new Date(p.subscription_expiry_date) > now;
+            }).length;
+
+            const active_bans_count = profiles.filter((p: any) => p.is_banned).length;
+
+            const weekly_active_users  = profiles.filter((p: any) => p.last_sign_in_at && new Date(p.last_sign_in_at) >= oneWeekAgo).length;
+            const monthly_active_users = profiles.filter((p: any) => p.last_sign_in_at && new Date(p.last_sign_in_at) >= thirtyDaysAgo).length;
+            const unique_active_today  = profiles.filter((p: any) => p.last_sign_in_at && new Date(p.last_sign_in_at) >= todayStart).length;
+
+            // ── Exam popularity — questions practiced per exam type ──────────────
+            // Source: completed tests table (total_questions per completed test).
+            // This is the most accurate signal — covers ALL test modes (practice &
+            // mock) and ALL exam types without any arbitrary multipliers.
+
+            // Normalize variant exam_type values → canonical form so duplicates merge.
+            // The DB stores BOTH 'cent-s' (from mock_sessions) and 'cent-s-prep'
+            // (from practice bank / activeExam.id). All variants roll into one key.
+            const EXAM_TYPE_ALIASES: Record<string, string> = {
+                // CEnT-S variants → canonical 'cent-s-prep' (matches exams.ts id)
+                'cent-s':         'cent-s-prep',
+                'cents':          'cent-s-prep',
+                'cent_s':         'cent-s-prep',
+                'cent-s prep':    'cent-s-prep',
+                'cens-prep':      'cent-s-prep',
+                'cens_prep':      'cent-s-prep',
+                'cents-prep':     'cent-s-prep',
+                'cens':           'cent-s-prep',
+                'cen-s':          'cent-s-prep',
+                'cen-s-prep':     'cent-s-prep',
+                // IMAT variants
+                'imat':           'imat-prep',
+                // SAT variants
+                'sat':            'sat-prep',
+                // IELTS variants
+                'ielts':          'ielts-academic',
+                // Note: 'tolc-e' and 'til-i' are already the canonical IDs in exams.ts
+                // — do NOT remap them.
+            };
+            const normalizeExamType = (raw: string): string => {
+                const key = raw.toLowerCase().trim();
+                return EXAM_TYPE_ALIASES[key] ?? raw;
+            };
+
+            const examCounts: Record<string, number> = {};
+
+            // DEBUG: log all raw exam_type values from DB
+            const rawExamTypes = new Set(completedTestsData.map((t: any) => t.exam_type));
+            console.log('[Exam Popularity] Raw exam_type values from DB:', [...rawExamTypes]);
+
+            completedTestsData.forEach((t: any) => {
+                const type = normalizeExamType(t.exam_type || 'Other');
+                const practiced = t.total_questions || 0;
+                if (practiced > 0) {
+                    examCounts[type] = (examCounts[type] || 0) + practiced;
+                }
+            });
+
+            console.log('[Exam Popularity] Normalized counts:', examCounts);
+
+            const top_exams = Object.entries(examCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([exam_type, count]) => ({ exam_type, count }));
+
+            // ── UTM source distribution ──────────────────────────────────────
+            const utmMap: Record<string, number> = {};
+            profiles.forEach((p: any) => {
+                if (p.utm_source) utmMap[p.utm_source] = (utmMap[p.utm_source] || 0) + 1;
+            });
+            const top_utm_source = Object.entries(utmMap).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+            const total_practice_sessions = practiceData.length;
+
+            // ── Recent activity from transactions ────────────────────────────
+            const recent_activity = (recentTxRes.data || []).map((tx: any) => ({
+                type: 'Payment',
+                title: (tx.profiles as any)?.display_name || 'Unknown User',
+                description: `${(tx.plan_id || '').toUpperCase()} plan`,
+                time: tx.created_at
+            }));
+
+            setStats({
+                total_users,
+                new_users_today,
+                total_visitors: 0,         // page-view tracking disabled (DB writes turned off)
+                unique_visitors_today: 0,  // page-view tracking disabled
+                active_subscriptions,
+                active_bans_count,
+                weekly_active_users,
+                monthly_active_users,
+                unique_active_today,
+                retention_rate_weekly:  total_users > 0 ? Math.round((weekly_active_users  / total_users) * 100) : 0,
+                retention_rate_monthly: total_users > 0 ? Math.round((monthly_active_users / total_users) * 100) : 0,
+                top_exams,
+                recent_activity,
+                top_utm_source,
+                avg_mock_score: undefined, // Suppressed: IELTS/IMAT/CENT-S use incompatible score scales
+                total_practice_sessions
+            });
         } catch (err: any) {
             console.error("Dashboard fetch error:", err);
             setError(err.message || "Failed to load dashboard data");
@@ -121,13 +293,15 @@ export default function AnalyticsOverview() {
 
     const formatExamLabel = (type: string) => {
         const labels: Record<string, string> = {
-            'cent-s-prep': 'CEnT-S',
-            'imat-prep': 'IMAT',
-            'sat-prep': 'SAT',
+            'cent-s-prep':    'CEnT-S',
+            'imat-prep':      'IMAT',
+            'sat-prep':       'SAT',
             'ielts-academic': 'IELTS',
-            'general': 'Practice'
+            'tolc-e':         'TOLC-E',
+            'til-i':          'TIL-I',
+            'general':        'Practice'
         };
-        return labels[type] || type.toUpperCase();
+        return labels[type] || type.replace(/-prep$/i, '').toUpperCase();
     };
 
     if (isLoading) {
@@ -157,14 +331,14 @@ export default function AnalyticsOverview() {
         {
             label: 'Active Last 7 Days',
             value: stats?.weekly_active_users ?? 0,
-            subValue: `${stats?.retention_rate_weekly ?? 0}% of all students`,
+            subValue: `${stats?.retention_rate_weekly ?? 0}% 7-day engagement rate`,
             icon: TrendingUp,
             color: 'emerald'
         },
         {
             label: 'Active Last 30 Days',
             value: stats?.monthly_active_users ?? 0,
-            subValue: `${stats?.retention_rate_monthly ?? 0}% of all students`,
+            subValue: `${stats?.retention_rate_monthly ?? 0}% 30-day engagement rate`,
             icon: UserCheck,
             color: 'rose'
         },
@@ -180,22 +354,22 @@ export default function AnalyticsOverview() {
     const marketingCards = [
         {
             label: 'Top UTM Source',
-            value: stats?.top_utm_source || 'Organic/Direct',
-            subValue: 'Best paid acquisition channel',
+            value: stats?.top_utm_source || 'None Tracked',
+            subValue: 'Most common tracked signup source (partial — Google OAuth excluded)',
             icon: Globe,
             color: 'indigo'
         },
         {
-            label: 'Avg. Mock Score',
-            value: stats?.avg_mock_score !== undefined ? `${stats.avg_mock_score}` : '—',
-            subValue: 'Across all completed mock tests',
+            label: 'Mock Score',
+            value: '—',
+            subValue: 'Incomparable scales: IELTS band vs IMAT vs CENT-S',
             icon: Target,
             color: 'amber'
         },
         {
             label: 'Practice Sessions',
             value: (stats?.total_practice_sessions || 0).toLocaleString(),
-            subValue: 'Total questions answered on platform',
+            subValue: 'Total practice responses logged all-time',
             icon: LineChart,
             color: 'emerald'
         }
@@ -279,9 +453,9 @@ export default function AnalyticsOverview() {
                             <div className={`w-10 h-10 rounded-2xl bg-${card.color}-500/10 flex items-center justify-center text-${card.color}-600`}>
                                 <card.icon className="w-5 h-5" />
                             </div>
-                            <div className="h-6 px-2 rounded-lg bg-emerald-50 text-emerald-600 text-[8px] font-black uppercase flex items-center gap-1">
-                                <ArrowUpRight className="w-3 h-3" />
-                                Live
+                            <div className="h-6 px-2 rounded-lg bg-slate-50 text-slate-400 text-[8px] font-black uppercase flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Snapshot
                             </div>
                         </div>
                         <p className="text-3xl font-bold text-slate-900 tracking-tight">{card.value.toLocaleString()}</p>
@@ -318,10 +492,10 @@ export default function AnalyticsOverview() {
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                                <Trophy className="w-4 h-4 text-amber-500" />
+                                <Award className="w-4 h-4 text-violet-500" />
                                 Exam Popularity
                             </h3>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">Practice session distribution by exam type</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">Questions practiced across all completed tests</p>
                         </div>
                     </div>
 
@@ -357,7 +531,7 @@ export default function AnalyticsOverview() {
                                             fontWeight: 'bold'
                                         }}
                                     />
-                                    <Bar dataKey="count" radius={[8, 8, 0, 0]} barSize={40}>
+                                    <Bar dataKey="count" name="Questions Practiced" radius={[8, 8, 0, 0]} barSize={40}>
                                         {stats.top_exams.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]} />
                                         ))}

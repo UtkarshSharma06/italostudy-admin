@@ -1,0 +1,343 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase as _supabase } from '@/integrations/supabase/client';
+// Cast once — new course tables aren't in the generated types yet.
+// After running the migration and regenerating types, remove this cast.
+const supabase = _supabase as any;
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import {
+    Plus, Trash2, Pencil, Loader2, GraduationCap, BookOpen,
+    ChevronRight, ChevronDown, Video, FileText, Users, Euro,
+    Clock, Eye, EyeOff, ArrowLeft, ToggleLeft, ToggleRight,
+    Calendar, CheckCircle, XCircle, Search, RefreshCw, Image as ImageIcon
+} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Course {
+    id: string;
+    title: string;
+    description: string;
+    thumbnail_url: string;
+    banner_url: string;
+    exam_model_id: string | null;
+    price_eur: number;
+    discount_price_eur?: number | null;
+    expiry_days: number;
+    is_active: boolean;
+    is_free: boolean;
+    created_at: string;
+    regional_prices?: Record<string, number>;
+    slug?: string;
+    launch_date?: string;
+    lecture_type?: string;
+    lectures_count?: string;
+}
+interface CourseSubject { id: string; course_id: string; title: string; position: number; }
+interface CourseChapter { id: string; subject_id: string; title: string; position: number; }
+interface CourseLecture { id: string; chapter_id: string; title: string; youtube_video_id: string; thumbnail_url?: string; duration_seconds: number | null; position: number; is_preview: boolean; }
+interface CoursePdf { id: string; chapter_id: string; title: string; pdf_url: string; position: number; is_preview: boolean; }
+interface Enrollment { id: string; user_id: string; course_id: string; amount_paid_eur: number; purchased_at: string; expires_at: string; status: string; profiles?: { email: string; full_name: string; }; }
+interface Exam { id: string; name: string; slug: string; }
+
+const EMPTY_COURSE: Omit<Course, 'id' | 'created_at'> = {
+    title: '', slug: '', description: '', thumbnail_url: '', banner_url: '',
+    exam_model_id: null, price_eur: 0, discount_price_eur: null, expiry_days: 365, is_active: true, is_free: false, regional_prices: {}, launch_date: '', lecture_type: 'Recorded', lectures_count: ''
+};
+
+export default function CourseManager() {
+    const { toast } = useToast();
+    const [activeSubTab, setActiveSubTab] = useState('courses');
+
+    // ── Courses ──
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loadingCourses, setLoadingCourses] = useState(true);
+    const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+    const [courseForm, setCourseForm] = useState(EMPTY_COURSE);
+    const [showCourseForm, setShowCourseForm] = useState(false);
+    const [exams, setExams] = useState<Exam[]>([]);
+
+    // ── Subjects ──
+    const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+    const [subjects, setSubjects] = useState<CourseSubject[]>([]);
+    const [loadingSubjects, setLoadingSubjects] = useState(false);
+    const [subjectTitle, setSubjectTitle] = useState('');
+    const [editingSubject, setEditingSubject] = useState<CourseSubject | null>(null);
+
+    // ── Chapters ──
+    const [selectedSubject, setSelectedSubject] = useState<CourseSubject | null>(null);
+    const [chapters, setChapters] = useState<CourseChapter[]>([]);
+    const [loadingChapters, setLoadingChapters] = useState(false);
+    const [chapterTitle, setChapterTitle] = useState('');
+    const [editingChapter, setEditingChapter] = useState<CourseChapter | null>(null);
+
+    // ── Lectures ──
+    const [selectedChapter, setSelectedChapter] = useState<CourseChapter | null>(null);
+    const [lectures, setLectures] = useState<CourseLecture[]>([]);
+    const [loadingLectures, setLoadingLectures] = useState(false);
+    const [lectureForm, setLectureForm] = useState({ title: '', youtube_video_id: '', thumbnail_url: '', duration_seconds: '', is_preview: false });
+    const [editingLecture, setEditingLecture] = useState<CourseLecture | null>(null);
+
+    // ── PDFs ──
+    const [pdfs, setPdfs] = useState<CoursePdf[]>([]);
+    const [loadingPdfs, setLoadingPdfs] = useState(false);
+    const [pdfForm, setPdfForm] = useState({ title: '', pdf_url: '', is_preview: false });
+    const [editingPdf, setEditingPdf] = useState<CoursePdf | null>(null);
+
+    // ── Enrollments ──
+    const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+    const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+    const [enrollSearch, setEnrollSearch] = useState('');
+    const [manualEnroll, setManualEnroll] = useState({ user_id: '', course_id: '', days: 365 });
+
+    // ── Courses Ad Banner ──
+    const [adBannerForm, setAdBannerForm] = useState({ image_url: '', title: '', subtitle: '', cta_label: '', cta_url: '' });
+    const [savingBanner, setSavingBanner] = useState(false);
+    const [bannerLoaded, setBannerLoaded] = useState(false);
+
+    // ─── Fetch Exams ─────────────────────────────────────────────────────────
+    useEffect(() => {
+        supabase.from('exams').select('id,name,slug').order('name').then(({ data }) => setExams(data || []));
+        // Load existing ad banner
+        supabase.from('system_settings').select('value').eq('key', 'courses_ad_banner').maybeSingle()
+            .then(({ data }) => {
+                if (data?.value) setAdBannerForm(data.value as any);
+                setBannerLoaded(true);
+            });
+    }, []);
+
+    // ─── Courses CRUD ─────────────────────────────────────────────────────────
+    const fetchCourses = useCallback(async () => {
+        setLoadingCourses(true);
+        const { data, error } = await supabase.from('courses').select('*').order('created_at', { ascending: false });
+        if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        else setCourses((data as any) || []);
+        setLoadingCourses(false);
+    }, []);
+
+    useEffect(() => { fetchCourses(); }, [fetchCourses]);
+
+    const handleSaveCourse = async () => {
+        if (!courseForm.title.trim()) { toast({ title: 'Title required', variant: 'destructive' }); return; }
+        // Clean up regional prices (remove empty/invalid)
+        const cleanedRegionalPrices: Record<string, number> = {};
+        if (courseForm.regional_prices?.INR) cleanedRegionalPrices.INR = Number(courseForm.regional_prices.INR);
+        if (courseForm.regional_prices?.INR_discount) cleanedRegionalPrices.INR_discount = Number(courseForm.regional_prices.INR_discount);
+        
+        let finalSlug = courseForm.slug?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || null;
+
+        const payload = { ...courseForm, slug: finalSlug, price_eur: Number(courseForm.price_eur), discount_price_eur: courseForm.discount_price_eur ? Number(courseForm.discount_price_eur) : null, expiry_days: Number(courseForm.expiry_days), regional_prices: cleanedRegionalPrices, launch_date: courseForm.launch_date, lecture_type: courseForm.lecture_type };
+        const { error } = editingCourse
+            ? await supabase.from('courses').update(payload).eq('id', editingCourse.id)
+            : await supabase.from('courses').insert([payload]);
+        if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+        toast({ title: editingCourse ? 'Course updated' : 'Course created' });
+        setShowCourseForm(false); setEditingCourse(null); setCourseForm(EMPTY_COURSE); fetchCourses();
+    };
+
+    const handleDeleteCourse = async (id: string) => {
+        if (!confirm('Delete this course and ALL its content? This cannot be undone.')) return;
+        const { error } = await supabase.from('courses').delete().eq('id', id);
+        if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        else { toast({ title: 'Course deleted' }); fetchCourses(); }
+    };
+
+    const handleToggleActive = async (course: Course) => {
+        await supabase.from('courses').update({ is_active: !course.is_active }).eq('id', course.id);
+        fetchCourses();
+    };
+
+    // ─── Subjects CRUD ────────────────────────────────────────────────────────
+    const fetchSubjects = useCallback(async (courseId: string) => {
+        setLoadingSubjects(true);
+        const { data } = await supabase.from('course_subjects').select('*').eq('course_id', courseId).order('position');
+        setSubjects((data as any) || []);
+        setLoadingSubjects(false);
+    }, []);
+
+    const handleSaveSubject = async () => {
+        if (!selectedCourse || !subjectTitle.trim()) return;
+        const maxPos = subjects.reduce((m, s) => Math.max(m, s.position), 0);
+        const { error } = editingSubject
+            ? await supabase.from('course_subjects').update({ title: subjectTitle, position: editingSubject.position }).eq('id', editingSubject.id)
+            : await supabase.from('course_subjects').insert([{ course_id: selectedCourse.id, title: subjectTitle, position: maxPos + 1 }]);
+        if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+        setSubjectTitle(''); setEditingSubject(null); fetchSubjects(selectedCourse.id);
+    };
+
+    const handleDeleteSubject = async (id: string) => {
+        if (!confirm('Delete subject and all its chapters?')) return;
+        await supabase.from('course_subjects').delete().eq('id', id);
+        if (selectedCourse) fetchSubjects(selectedCourse.id);
+    };
+
+    // ─── Chapters CRUD ────────────────────────────────────────────────────────
+    const fetchChapters = useCallback(async (subjectId: string) => {
+        setLoadingChapters(true);
+        const { data } = await supabase.from('course_chapters').select('*').eq('subject_id', subjectId).order('position');
+        setChapters((data as any) || []);
+        setLoadingChapters(false);
+    }, []);
+
+    const handleSaveChapter = async () => {
+        if (!selectedSubject || !chapterTitle.trim()) return;
+        const maxPos = chapters.reduce((m, c) => Math.max(m, c.position), 0);
+        const { error } = editingChapter
+            ? await supabase.from('course_chapters').update({ title: chapterTitle }).eq('id', editingChapter.id)
+            : await supabase.from('course_chapters').insert([{ subject_id: selectedSubject.id, title: chapterTitle, position: maxPos + 1 }]);
+        if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+        setChapterTitle(''); setEditingChapter(null); fetchChapters(selectedSubject.id);
+    };
+
+    const handleDeleteChapter = async (id: string) => {
+        if (!confirm('Delete chapter and all its lectures/PDFs?')) return;
+        await supabase.from('course_chapters').delete().eq('id', id);
+        if (selectedSubject) fetchChapters(selectedSubject.id);
+    };
+
+    // ─── Lectures CRUD ────────────────────────────────────────────────────────
+    const fetchLectures = useCallback(async (chapterId: string) => {
+        setLoadingLectures(true);
+        const { data } = await supabase.from('course_lectures').select('*').eq('chapter_id', chapterId).order('position');
+        setLectures((data as any) || []);
+        setLoadingLectures(false);
+    }, []);
+
+    const fetchPdfs = useCallback(async (chapterId: string) => {
+        setLoadingPdfs(true);
+        const { data } = await supabase.from('course_pdfs').select('*').eq('chapter_id', chapterId).order('position');
+        setPdfs((data as any) || []);
+        setLoadingPdfs(false);
+    }, []);
+
+    const handleSaveLecture = async () => {
+        if (!selectedChapter || !lectureForm.title.trim()) return;
+        // Strip full YT URL if user pastes it — extract just the ID
+        let ytId = lectureForm.youtube_video_id.trim();
+        const ytMatch = ytId.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+        if (ytMatch) ytId = ytMatch[1];
+
+        const maxPos = lectures.reduce((m, l) => Math.max(m, l.position), 0);
+        const payload = {
+            chapter_id: selectedChapter.id,
+            title: lectureForm.title,
+            youtube_video_id: ytId,
+            thumbnail_url: lectureForm.thumbnail_url.trim() || null,
+            duration_seconds: lectureForm.duration_seconds ? Number(lectureForm.duration_seconds) : null,
+            is_preview: lectureForm.is_preview,
+            position: editingLecture ? editingLecture.position : maxPos + 1,
+        };
+        const { error } = editingLecture
+            ? await supabase.from('course_lectures').update(payload).eq('id', editingLecture.id)
+            : await supabase.from('course_lectures').insert([payload]);
+        if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+        setLectureForm({ title: '', youtube_video_id: '', thumbnail_url: '', duration_seconds: '', is_preview: false });
+        setEditingLecture(null); fetchLectures(selectedChapter.id);
+    };
+
+    const handleDeleteLecture = async (id: string) => {
+        await supabase.from('course_lectures').delete().eq('id', id);
+        if (selectedChapter) fetchLectures(selectedChapter.id);
+    };
+
+    const handleSavePdf = async () => {
+        if (!selectedChapter || !pdfForm.title.trim() || !pdfForm.pdf_url.trim()) return;
+        const maxPos = pdfs.reduce((m, p) => Math.max(m, p.position), 0);
+        const payload = { chapter_id: selectedChapter.id, title: pdfForm.title, pdf_url: pdfForm.pdf_url, position: editingPdf ? editingPdf.position : maxPos + 1 };
+        const { error } = editingPdf
+            ? await supabase.from('course_pdfs').update(payload).eq('id', editingPdf.id)
+            : await supabase.from('course_pdfs').insert([payload]);
+        if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+        setPdfForm({ title: '', pdf_url: '', is_preview: false }); setEditingPdf(null); fetchPdfs(selectedChapter.id);
+    };
+
+    const handleDeletePdf = async (id: string) => {
+        await supabase.from('course_pdfs').delete().eq('id', id);
+        if (selectedChapter) fetchPdfs(selectedChapter.id);
+    };
+
+    // ─── Enrollments ─────────────────────────────────────────────────────────
+    const fetchEnrollments = useCallback(async () => {
+        setLoadingEnrollments(true);
+        const { data: enrollData, error: enrollError } = await supabase
+            .from('course_enrollments')
+            .select('*')
+            .order('purchased_at', { ascending: false })
+            .limit(200);
+        
+        if (enrollError) {
+            console.error("Fetch Enrollments Error:", enrollError);
+            toast({ title: 'Error fetching enrollments', description: enrollError.message, variant: 'destructive' });
+            setLoadingEnrollments(false);
+            return;
+        }
+        
+        const enrollments = enrollData || [];
+
+        if (enrollments.length > 0) {
+            const userIds = [...new Set(enrollments.map((e: any) => e.user_id))];
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, email, display_name')
+                .in('id', userIds);
+            
+            const profileMap = new Map();
+            if (profilesData) {
+                profilesData.forEach((p: any) => profileMap.set(p.id, {
+                    email: p.email,
+                    full_name: p.display_name
+                }));
+            }
+
+            enrollments.forEach((e: any) => {
+                e.profiles = profileMap.get(e.user_id) || null;
+            });
+        }
+
+        setEnrollments(enrollments);
+        setLoadingEnrollments(false);
+    }, []);
+
+    useEffect(() => {
+        if (activeSubTab === 'enrollments') {
+            fetchEnrollments();
+        }
+    }, [activeSubTab, fetchEnrollments]);
+
+    const handleManualEnroll = async () => {
+        if (!manualEnroll.user_id || !manualEnroll.course_id) {
+            toast({ title: 'User ID and Course ID required', variant: 'destructive' }); return;
+        }
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + Number(manualEnroll.days));
+        const { error } = await supabase.from('course_enrollments').upsert([{
+            user_id: manualEnroll.user_id, course_id: manualEnroll.course_id,
+            amount_paid_eur: 0, expires_at: expiresAt.toISOString(), status: 'active'
+        }], { onConflict: 'user_id,course_id' });
+        if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+        toast({ title: 'Enrollment granted!' });
+        setManualEnroll({ user_id: '', course_id: '', days: 365 });
+        fetchEnrollments();
+    };
+
+    const handleRevokeEnrollment = async (id: string) => {
+        if (!confirm('Are you sure you want to completely remove this user from the course?')) return;
+        await supabase.from('course_enrollments').delete().eq('id', id);
+        fetchEnrollments();
+    };
+
+    const filteredEnrollments = enrollments.filter(e =>
+        !enrollSearch ||
+        (e.profiles as any)?.email?.toLowerCase().includes(enrollSearch.toLowerCase()) ||
+        (e.profiles as any)?.full_name?.toLowerCase().includes(enrollSearch.toLowerCase())
+    );
+
+    // ─── Format helpers ───────────────────────────────────────────────────────
+    const fmt = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const isExpired = (d: string) => new Date(d) < new Date();
+

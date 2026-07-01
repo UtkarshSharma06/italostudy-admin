@@ -26,7 +26,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const ALL_TABS = [
     { id: "analytics", label: "Dashboard", category: "Analytics" },
-    { id: "marketing", label: "Marketing", category: "Analytics" },
+
     { id: "seo-health", label: "SEO Health", category: "Analytics" },
     { id: "mock-results", label: "Results", category: "Analytics" },
     { id: "payments", label: "Payments", category: "Finance" },

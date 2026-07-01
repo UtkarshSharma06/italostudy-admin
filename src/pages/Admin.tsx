@@ -58,12 +58,16 @@ import {
     Moon,
     Sun,
     TrendingUp,
-    Globe
+    Globe,
+    ShoppingBag,
+    GraduationCap
 } from 'lucide-react';
 import { generateMockTestPDF } from '@/utils/pdfExport';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MediaEditor from '@/components/admin/MediaEditor';
 import { MediaContent } from '@/types/test';
+const CourseManager = lazy(() => import('@/components/admin/CourseManager'));
+const PreRegistrationManager = lazy(() => import('@/components/admin/PreRegistrationManager'));
 const LearningManager = lazy(() => import('@/components/admin/LearningManager'));
 const ReadingManager = lazy(() => import('@/components/admin/ReadingManager'));
 const ListeningManager = lazy(() => import('@/components/admin/ListeningManager'));
@@ -82,7 +86,6 @@ const MockResultsViewer = lazy(() => import('@/components/admin/MockResultsViewe
 const SubAdminManager = lazy(() => import('@/components/admin/SubAdminManager'));
 const AnalyticsOverview = lazy(() => import('@/components/admin/AnalyticsOverview'));
 const InvestorDashboard = lazy(() => import('@/components/admin/InvestorDashboard'));
-const MarketingAnalytics = lazy(() => import('@/components/admin/MarketingAnalytics'));
 const SystemConfig = lazy(() => import('@/components/admin/SystemConfig'));
 const SecurityMonitor = lazy(() => import('@/components/admin/SecurityMonitor'));
 const PricingManager = lazy(() => import('@/components/admin/PricingManager'));
@@ -99,6 +102,9 @@ const PlatformUpdatesManager = lazy(() => import('@/components/admin/PlatformUpd
 const BookletManager = lazy(() => import('@/components/admin/BookletManager'));
 const SEOHealthMonitor = lazy(() => import('@/components/admin/SEOHealthMonitor'));
 const AnnouncementManager = lazy(() => import('@/components/admin/AnnouncementManager'));
+const AdCampaignManager = lazy(() => import('@/components/admin/store/AdCampaignManager'));
+const SupportTickets = lazy(() => import('@/components/admin/SupportTickets'));
+const SupportTopics = lazy(() => import('@/components/admin/SupportTopics'));
 import { useAuth } from '@/lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -1021,6 +1027,7 @@ export default function Admin() {
         {
             title: "Analytics", items: [
                 { id: "analytics",    label: "Dashboard",     icon: BarChart3    },
+                { id: "pre-registrations", label: "Pre-Registrations", icon: Ticket },
                 { id: "investor",     label: "Investor KPIs", icon: TrendingUp   },
                 { id: "marketing",    label: "Marketing",     icon: Radar        },
                 { id: "seo-health",   label: "SEO Health",    icon: Globe        },
@@ -1032,6 +1039,7 @@ export default function Admin() {
                 { id: "payments", label: "Payments", icon: Wallet  },
                 { id: "pricing",  label: "Pricing",  icon: Zap     },
                 { id: "coupons",  label: "Coupons",  icon: Ticket  },
+                { id: "ad-campaigns", label: "Ad Campaigns", icon: ShoppingBag },
             ]
         },
         {
@@ -1047,6 +1055,7 @@ export default function Admin() {
         },
         {
             title: "Material", items: [
+                { id: "courses",       label: "Courses",           icon: GraduationCap },
                 { id: "exam-manager",  label: "Exam Model",        icon: FileJson    },
                 { id: "learning",      label: "Lessons",           icon: Brain       },
                 { id: "reading",       label: "Reading",           icon: BookOpen    },
@@ -1067,6 +1076,8 @@ export default function Admin() {
                 { id: "consultants",   label: "Staff",          icon: UserCog    },
                 { id: "community",     label: "Community",      icon: Hash       },
                 { id: "feedback",      label: "Feedback",       icon: MessageSquare },
+                { id: "support-tickets", label: "Support Tickets", icon: MessageSquare },
+                { id: "support-topics",  label: "Help Topics",     icon: FileText },
                 { id: "notifications", label: "Alerts",         icon: Bell       },
                 { id: "announcements", label: "Banner Ads",     icon: Megaphone  },
                 { id: "security",      label: "Security & Bans",icon: Lock       },
@@ -1221,12 +1232,18 @@ export default function Admin() {
 
                                 <Suspense fallback={<div className="flex h-[40vh] items-center justify-center w-full"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>}>
                                 <TabsContent value="exam-manager" className="mt-0 focus-visible:outline-none">{activeTab === 'exam-manager' && <ExamManager />}</TabsContent>
+                                <TabsContent value="courses" className="mt-0 focus-visible:outline-none">{activeTab === 'courses' && <CourseManager />}</TabsContent>
+                                <TabsContent value="pre-registrations" className="mt-0 focus-visible:outline-none">{activeTab === 'pre-registrations' && <PreRegistrationManager />}</TabsContent>
                                 <TabsContent value="learning" className="mt-0 focus-visible:outline-none">{activeTab === 'learning' && <LearningManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>
                                 <TabsContent value="analytics" className="mt-0 focus-visible:outline-none">{activeTab === 'analytics' && <AnalyticsOverview />}</TabsContent>
                                 <TabsContent value="investor" className="mt-0 focus-visible:outline-none">{activeTab === 'investor' && <InvestorDashboard />}</TabsContent>
-                                <TabsContent value="marketing" className="mt-0 focus-visible:outline-none">{activeTab === 'marketing' && <MarketingAnalytics />}</TabsContent>
+                                
+                                <TabsContent value="support-tickets" className="mt-0 focus-visible:outline-none">{activeTab === 'support-tickets' && <SupportTickets />}</TabsContent>
+                                <TabsContent value="support-topics" className="mt-0 focus-visible:outline-none">{activeTab === 'support-topics' && <SupportTopics />}</TabsContent>
+                                
                                 <TabsContent value="payments" className="mt-0 focus-visible:outline-none">{activeTab === 'payments' && <PaymentsManager />}</TabsContent>
                                 <TabsContent value="coupons" className="mt-0 focus-visible:outline-none">{activeTab === 'coupons' && <CouponsManager />}</TabsContent>
+                                <TabsContent value="ad-campaigns" className="mt-0 focus-visible:outline-none">{activeTab === 'ad-campaigns' && <AdCampaignManager />}</TabsContent>
                                 <TabsContent value="mock-results" className="mt-0 focus-visible:outline-none">{activeTab === 'mock-results' && <MockResultsViewer />}</TabsContent>
                                 <TabsContent value="sessions" className="mt-0 focus-visible:outline-none">
                                     {activeTab === 'sessions' && (
