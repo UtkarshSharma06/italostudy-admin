@@ -693,6 +693,7 @@ export default function Admin() {
             listening_test_id: '',
             writing_task1_id: '',
             writing_task2_id: '',
+            pdf_url: '',
             difficulty: 'medium'
         });
     };
@@ -726,6 +727,7 @@ export default function Admin() {
         if (formData.listening_test_id) config.listening_test_id = formData.listening_test_id;
         if (formData.writing_task1_id) config.writing_task1_id = formData.writing_task1_id;
         if (formData.writing_task2_id) config.writing_task2_id = formData.writing_task2_id;
+        if (formData.pdf_url) config.pdf_url = formData.pdf_url;
 
         const sessionData = {
             title: formData.title,
@@ -798,6 +800,7 @@ export default function Admin() {
             listening_test_id: (session.config as any)?.listening_test_id || '',
             writing_task1_id: (session.config as any)?.writing_task1_id || '',
             writing_task2_id: (session.config as any)?.writing_task2_id || '',
+            pdf_url: (session.config as any)?.pdf_url || '',
             difficulty: (session as any).difficulty || 'medium',
             is_sections_locked: session.is_sections_locked ?? true,
             section_timing_mode: session.section_timing_mode ?? 'section',
@@ -1297,6 +1300,11 @@ export default function Admin() {
                                                             <div className="space-y-2">
                                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</Label>
                                                                 <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Provide context about this session..." className="rounded-xl min-h-[100px]" />
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mock PDF Download Link (Premium Only)</Label>
+                                                                <Input value={(formData as any).pdf_url || ''} onChange={e => setFormData({ ...formData, pdf_url: e.target.value })} placeholder="https://..." className="h-12 rounded-xl" />
                                                             </div>
 
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

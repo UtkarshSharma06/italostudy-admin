@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,8 @@ interface PlanCycle {
     durationValue: number;
     durationUnit: 'days' | 'months' | 'years';
     dodoId?: string;
+    dodoPkrId?: string;
+    dodoBdtId?: string;
     razorpayId?: string;
     paypalId?: string;
     regionalPrices?: Record<string, number>;
@@ -524,8 +526,16 @@ export default function PricingManager() {
                                                         <div className="mt-3 space-y-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
                                                             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Gateway Subscription Plan IDs</p>
                                                             <div className="space-y-1">
-                                                                <Label className="text-[8px] uppercase font-bold text-teal-600 dark:text-teal-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span> Dodo Payments</Label>
+                                                                <Label className="text-[8px] uppercase font-bold text-teal-600 dark:text-teal-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span> Dodo Payments (Global)</Label>
                                                                 <Input value={cycle.dodoId || ''} onChange={e => { const nc = [...plan.cycles]; nc[cIdx] = { ...cycle, dodoId: e.target.value }; updatePlan(plan.id, { cycles: nc }); }} className="h-8 text-[10px] font-bold rounded-lg border-teal-200 bg-teal-50/30 dark:bg-teal-900/10" placeholder="pdt_xxx" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[8px] uppercase font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-600 inline-block"></span> Dodo Payments (Pakistan PKR)</Label>
+                                                                <Input value={cycle.dodoPkrId || ''} onChange={e => { const nc = [...plan.cycles]; nc[cIdx] = { ...cycle, dodoPkrId: e.target.value }; updatePlan(plan.id, { cycles: nc }); }} className="h-8 text-[10px] font-bold rounded-lg border-teal-300 bg-teal-50/50 dark:bg-teal-900/20" placeholder="pdt_xxx_pkr" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[8px] uppercase font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-700 inline-block"></span> Dodo Payments (Bangladesh BDT)</Label>
+                                                                <Input value={cycle.dodoBdtId || ''} onChange={e => { const nc = [...plan.cycles]; nc[cIdx] = { ...cycle, dodoBdtId: e.target.value }; updatePlan(plan.id, { cycles: nc }); }} className="h-8 text-[10px] font-bold rounded-lg border-teal-400 bg-teal-50/70 dark:bg-teal-900/30" placeholder="pdt_xxx_bdt" />
                                                             </div>
                                                             <div className="space-y-1">
                                                                 <Label className="text-[8px] uppercase font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> Razorpay</Label>

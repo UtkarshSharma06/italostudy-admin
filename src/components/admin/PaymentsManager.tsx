@@ -121,6 +121,10 @@ export default function PaymentsManager() {
             }
 
             // ── Paginated subscription transactions ─────────────────────────────
+            // NOTE: We do NOT use .select('*, profiles(...)') because the FK on
+            // transactions.user_id points to auth.users, not public.profiles.
+            // That auto-join silently returns null for coupon purchases.
+            // Instead we fetch profiles manually (same pattern as course transactions).
             const fetchAllSubs = async () => {
                 const PAGE = 1000;
                 let page = 0;
@@ -128,7 +132,7 @@ export default function PaymentsManager() {
                 while (true) {
                     let q = supabase
                         .from('transactions')
-                        .select('*, profiles(display_name, email)')
+                        .select('*')
                         .neq('plan_id', 'explorer')
                         .neq('plan_id', 'STORE_ORDER')
                         .order('created_at', { ascending: false })
@@ -168,20 +172,24 @@ export default function PaymentsManager() {
 
             const [subData, courseData] = await Promise.all([fetchAllSubs(), fetchAllCourses()]);
 
-            // Fetch profiles for course transactions manually
-            const courseUserIds = Array.from(new Set(courseData.map((c: any) => c.user_id).filter(Boolean)));
-            const courseProfilesMap: Record<string, any> = {};
-            
-            if (courseUserIds.length > 0) {
-                for (let i = 0; i < courseUserIds.length; i += 500) {
-                    const chunk = courseUserIds.slice(i, i + 500);
+            // ── Manually fetch profiles for ALL user_ids (subs + courses) ────────
+            // This is the reliable approach since transactions.user_id FK → auth.users
+            // (not public.profiles), so Supabase auto-join doesn't work consistently.
+            const allUserIds = Array.from(new Set(
+                [...subData, ...courseData].map((t: any) => t.user_id).filter(Boolean)
+            ));
+            const profilesMap: Record<string, any> = {};
+
+            if (allUserIds.length > 0) {
+                for (let i = 0; i < allUserIds.length; i += 500) {
+                    const chunk = allUserIds.slice(i, i + 500);
                     const { data: pData } = await supabase
                         .from('profiles')
                         .select('id, display_name, email')
                         .in('id', chunk);
                     if (pData) {
                         pData.forEach((p: any) => {
-                            courseProfilesMap[p.id] = p;
+                            profilesMap[p.id] = p;
                         });
                     }
                 }
@@ -192,6 +200,7 @@ export default function PaymentsManager() {
                 ...t,
                 txn_type: 'subscription' as const,
                 amount: Number(t.amount),
+                profiles: profilesMap[t.user_id] || null,
             }));
 
             const courses: UnifiedTransaction[] = courseData.map((t: any) => ({
@@ -206,7 +215,7 @@ export default function PaymentsManager() {
                 course_id: t.course_id,
                 course_title: t.metadata?.course_title || 'Course',
                 txn_type: 'course' as const,
-                profiles: courseProfilesMap[t.user_id] || null,
+                profiles: profilesMap[t.user_id] || null,
             }));
 
             const merged = [...subs, ...courses].sort(
@@ -241,6 +250,21 @@ export default function PaymentsManager() {
             toast.success('Transaction deleted');
         } catch (err) {
             toast.error('Failed to delete transaction');
+        }
+    };
+
+    const handleMarkAsPaid = async (tx: UnifiedTransaction) => {
+        if (!window.confirm('Mark this transaction as Paid (completed)? This will only update the transaction record. You will still need to manually grant access to the user.')) return;
+        try {
+            const table = tx.txn_type === 'course' ? 'course_transactions' : 'transactions';
+            const { error } = await (supabase as any).from(table).update({ status: 'completed' }).eq('id', tx.id);
+            if (error) throw error;
+            setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, status: 'completed' } : t));
+            toast.success('Transaction marked as completed');
+            // Refresh to update stats
+            fetchTransactions();
+        } catch (err) {
+            toast.error('Failed to update transaction');
         }
     };
 
@@ -517,6 +541,14 @@ export default function PaymentsManager() {
                                                     onClick={() => handleDownloadInvoice(tx)}
                                                     title="Download Invoice">
                                                     <FileText size={14} />
+                                                </Button>
+                                            )}
+                                            {tx.status !== 'completed' && (
+                                                <Button variant="ghost" size="sm"
+                                                    className="h-8 w-8 p-0 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                                                    onClick={() => handleMarkAsPaid(tx)}
+                                                    title="Mark as Paid">
+                                                    <CheckCircle2 size={14} />
                                                 </Button>
                                             )}
                                             <Button variant="ghost" size="sm"

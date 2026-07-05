@@ -1,128 +1,170 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// @ts-nocheck
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-serve(async (req: Request) => {
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+Deno.serve(async (req: Request) => {
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+    const rawBody = await req.text();
+    let event: any;
     try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-        const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole);
+        event = JSON.parse(rawBody);
+    } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
 
-        // Validate webhook secret token passed as query parameter
-        // In PayPal dashboard, set your webhook URL to: .../paypal-webhook?secret=YOUR_SECRET
-        const url = new URL(req.url);
-        const webhookSecret = Deno.env.get('PAYPAL_WEBHOOK_SECRET');
-        const requestSecret = url.searchParams.get('secret');
+    console.log(`📨 PayPal webhook received: ${event.event_type}`);
 
-        if (webhookSecret && requestSecret !== webhookSecret) {
-            console.warn('PayPal webhook: invalid secret token');
-            return new Response('Unauthorized', { status: 401 });
+    // We only care about completed sale payments (which covers subscription renewals)
+    if (event.event_type !== 'PAYMENT.SALE.COMPLETED') {
+        return jsonRes({ received: true, action: 'ignored', reason: 'unhandled_event' });
+    }
+
+    try {
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') || '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+        );
+
+        const resource = event.resource;
+        
+        // In PAYMENT.SALE.COMPLETED, the subscription ID is billing_agreement_id
+        const subscriptionId = resource.billing_agreement_id;
+        const paymentId = resource.id;
+        
+        const amount = parseFloat(resource.amount?.total || '0');
+        const currency = resource.amount?.currency || 'EUR';
+
+        console.log(`Payment info: payment=${paymentId}, sub=${subscriptionId}, amount=${amount}`);
+
+        if (!subscriptionId) {
+            // Not a subscription payment, probably a one-time checkout
+            return jsonRes({ received: true, action: 'ignored', reason: 'no_subscription_id' });
         }
 
-        // Note: Full PayPal signature verification requires calling their
-        // /v1/notifications/verify-webhook-signature endpoint with the request headers.
-        // The above token check provides basic protection against untargeted requests.
+        // ── Look up original transaction ─────────────────────────────────────
+        const { data: originalTxns, error: txnErr } = await supabaseAdmin
+            .from('transactions')
+            .select('*')
+            .eq('payment_method', 'paypal')
+            .or(`provider_transaction_id.eq.${subscriptionId},metadata->>paypal_subscription_id.eq.${subscriptionId},metadata->>subscription_id.eq.${subscriptionId}`)
+            .order('created_at', { ascending: true })
+            .limit(1);
 
-        const payloadText = await req.text();
-        const event = JSON.parse(payloadText);
+        if (txnErr || !originalTxns || originalTxns.length === 0) {
+            console.warn(`No original transaction found for PayPal subscription: ${subscriptionId}`);
+            return jsonRes({ received: true, action: 'skipped', reason: 'transaction_not_found' });
+        }
 
-        // Subscriptions webhook types
-        if (event.event_type === 'BILLING.SUBSCRIPTION.ACTIVATED' || event.event_type === 'PAYMENT.SALE.COMPLETED' || event.event_type === 'BILLING.SUBSCRIPTION.RE-ACTIVATED') {
-            
-            // Extract the custom_id (which we map to transaction_id if we pass it, otherwise we fall back to finding by subscription_id)
-            const resource = event.resource;
-            const gatewaySubscriptionId = resource.id || resource.billing_agreement_id;
-            let transactionId = resource.custom_id;
+        const originalTxn = originalTxns[0];
 
-            // If we don't have transactionId natively in custom_id, we need to look up the user by the provider_subscription_id instead
-            let query = supabaseAdmin.from('transactions').select('*');
-            if (transactionId) {
-                query = query.eq('id', transactionId);
-            } else if (gatewaySubscriptionId) {
-                query = query.eq('provider_transaction_id', gatewaySubscriptionId);
-            } else {
-                return new Response("No valid identifier found", { status: 400 });
-            }
+        // ── Check if we already logged this renewal (Idempotency) ────────────
+        const { data: existingRenewal } = await supabaseAdmin
+            .from('transactions')
+            .select('id')
+            .eq('provider_transaction_id', paymentId)
+            .maybeSingle();
 
-            const { data: txn, error: txnError } = await query.single();
+        if (existingRenewal) {
+            console.log(`ℹ️ Renewal transaction already exists for payment ${paymentId}`);
+            return jsonRes({ received: true, action: 'skipped', reason: 'already_exists' });
+        }
 
-            if (txnError || !txn) {
-                // If it's a completely new payment for an existing subscription and we can't find the transaction, look up the profile directly!
-                const { data: profile } = await supabaseAdmin.from('profiles').select('id, selected_plan').eq('provider_subscription_id', gatewaySubscriptionId).single();
-                
-                if (profile) {
-                    // Just extend the user's subscription
-                    let expiryDate = new Date();
-                    if (resource.billing_info && resource.billing_info.next_billing_time) {
-                        expiryDate = new Date(resource.billing_info.next_billing_time);
-                    } else {
-                        expiryDate.setMonth(expiryDate.getMonth() + 1); // rough fallback
-                    }
-                    expiryDate.setDate(expiryDate.getDate() + 2); // Grace period
-
-                    await supabaseAdmin.from('profiles').update({ 
-                        subscription_expiry_date: expiryDate.toISOString()
-                    }).eq('id', profile.id);
-
-                    console.log(`✅ Webhook processed (Renewed). User ${profile.id} extended via PayPal.`);
-                    return new Response(JSON.stringify({ received: true }), { status: 200 });
+        // ── Insert Renewal Transaction ───────────────────────────────────────
+        console.log(`Processing PayPal renewal transaction for subscription=${subscriptionId}`);
+        
+        const { error: insertErr } = await supabaseAdmin
+            .from('transactions')
+            .insert({
+                user_id: originalTxn.user_id,
+                plan_id: originalTxn.plan_id,
+                amount: amount,
+                currency: currency,
+                status: 'completed',
+                payment_method: 'paypal_autopay',
+                provider_transaction_id: paymentId,
+                metadata: {
+                    subscription_id: subscriptionId,
+                    is_renewal: true,
+                    original_transaction_id: originalTxn.id,
+                    webhook_event: event.event_type
                 }
-                
-                return new Response("Transaction or Profile not found", { status: 404 });
+            });
+
+        if (insertErr) {
+            console.error('❌ Failed to insert PayPal renewal transaction:', insertErr.message);
+            throw insertErr;
+        }
+
+        console.log(`✅ PayPal renewal transaction inserted for payment ${paymentId}`);
+
+        // Grant plan/subscription extensions (only for app subscriptions)
+        const isStoreTransaction = !['global', 'elite', 'pro', 'explorer'].includes(originalTxn.plan_id || '');
+        if (!isStoreTransaction && originalTxn.user_id) {
+            let targetTier = 'pro';
+            switch (originalTxn.plan_id) {
+                case 'global':
+                case 'elite': targetTier = 'global'; break;
+                case 'pro': targetTier = 'pro'; break;
+                case 'explorer': targetTier = 'initiate'; break;
             }
 
-            // Update Transaction
-            if (txn.status !== 'completed') {
-                await supabaseAdmin
-                    .from('transactions')
-                    .update({ 
-                        status: 'completed',
-                        provider_transaction_id: gatewaySubscriptionId || resource.id,
-                        metadata: { ...txn.metadata, paypal_event: event }
-                    })
-                    .eq('id', txn.id);
-            }
+            const durVal = originalTxn.duration_value || 1;
+            const durUnit = originalTxn.duration_unit || 'months';
 
-            const planId = txn.plan_id;
-            let tier = 'pro';
-            if (planId === 'global' || planId === 'elite') tier = 'global';
-
-            let expiryDate = new Date();
+            const { data: profile } = await supabaseAdmin
+                .from('profiles')
+                .select('subscription_expiry_date')
+                .eq('id', originalTxn.user_id)
+                .single();
             
-            if (resource.billing_info && resource.billing_info.next_billing_time) {
-                expiryDate = new Date(resource.billing_info.next_billing_time);
-            } else {
-                const durationValue = parseInt(txn.metadata?.duration_value || '1', 10);
-                const durationUnit = txn.metadata?.duration_unit || 'months';
-
-                if (durationUnit === 'years') {
-                    expiryDate.setFullYear(expiryDate.getFullYear() + durationValue);
-                } else if (durationUnit === 'days') {
-                    expiryDate.setDate(expiryDate.getDate() + durationValue);
-                } else {
-                    expiryDate.setMonth(expiryDate.getMonth() + durationValue);
-                }
+            let oldExpiry = profile?.subscription_expiry_date ? new Date(profile.subscription_expiry_date) : null;
+            let newExpiry = new Date();
+            
+            if (oldExpiry && oldExpiry > new Date()) {
+                newExpiry = oldExpiry;
             }
-
-            expiryDate.setDate(expiryDate.getDate() + 2); // Grace period
+            
+            if (durUnit === 'months') {
+                newExpiry.setMonth(newExpiry.getMonth() + durVal);
+            } else if (durUnit === 'years') {
+                newExpiry.setFullYear(newExpiry.getFullYear() + durVal);
+            } else if (durUnit === 'days') {
+                newExpiry.setDate(newExpiry.getDate() + durVal);
+            }
 
             await supabaseAdmin
                 .from('profiles')
-                .update({ 
-                    selected_plan: planId,
-                    subscription_tier: tier,
-                    subscription_expiry_date: expiryDate.toISOString(),
-                    payment_provider: 'paypal',
-                    provider_subscription_id: gatewaySubscriptionId || txn.id
+                .update({
+                    selected_plan: originalTxn.plan_id,
+                    subscription_tier: targetTier,
+                    subscription_expiry_date: newExpiry.toISOString(),
+                    updated_at: new Date().toISOString()
                 })
-                .eq('id', txn.user_id);
+                .eq('id', originalTxn.user_id);
 
-            console.log(`✅ Webhook processed. User ${txn.user_id} upgraded via PayPal.`);
+            console.log(`✅ Profile updated: tier=${targetTier}, expiry=${newExpiry.toISOString()}`);
         }
 
-        return new Response(JSON.stringify({ received: true }), { headers: { 'Content-Type': 'application/json' }, status: 200 });
+        return jsonRes({ received: true, action: 'processed', subscription_id: subscriptionId, payment_id: paymentId });
 
-    } catch (error: any) {
-        console.error("Webhook Error:", error);
-        return new Response(`Webhook Error: ${error.message}`, { status: 400 });
+    } catch (err: any) {
+        console.error('paypal-webhook error:', err.message);
+        return jsonRes({ received: true, error: err.message });
     }
 });
+
+function jsonRes(body: object) {
+    return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+}
