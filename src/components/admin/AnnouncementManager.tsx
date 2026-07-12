@@ -403,7 +403,7 @@ export default function AnnouncementManager({ permissions, isSuperAdmin }: { per
                                 announcements.map((ann) => (
                                     <div key={ann.id} className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
                                         <div className="flex items-start justify-between relative z-10">
-                                            <div className="space-y-4 pr-4 flex-1">
+                                            <div className="space-y-4 pr-4 flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     {ann.is_active ? (
                                                         <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-emerald-100">
@@ -424,7 +424,7 @@ export default function AnnouncementManager({ permissions, isSuperAdmin }: { per
                                                 
                                                 <div className="space-y-1">
                                                     <h4 className="font-black text-slate-900 text-xl tracking-tight line-clamp-1">{ann.title || 'Flash Announcement'}</h4>
-                                                    <p className="text-sm text-slate-500 font-medium line-clamp-2 italic leading-relaxed">"{ann.content}"</p>
+                                                    <p className="text-sm text-slate-500 font-medium line-clamp-2 italic leading-relaxed break-all">"{ann.content}"</p>
                                                 </div>
                                                 
                                                 {/* Mini Preview Strip */}

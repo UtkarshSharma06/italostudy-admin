@@ -1270,6 +1270,7 @@ export default function Admin() {
                                 <TabsContent value="abandoned-checkouts" className="mt-0 focus-visible:outline-none">{activeTab === 'abandoned-checkouts' && <CheckoutAbandonmentsManager />}</TabsContent>
                                 <TabsContent value="mock-results" className="mt-0 focus-visible:outline-none">{activeTab === 'mock-results' && <MockResultsViewer />}</TabsContent>
                                 <TabsContent value="sessions" className="mt-0 focus-visible:outline-none">{activeTab === 'sessions' && <MockSessionManager />}</TabsContent>
+                                </TabsContent>
                                 {(isSuperAdmin || allowedTabs.includes('series')) && <TabsContent value="series" className="mt-0 focus-visible:outline-none">{activeTab === 'series' && <MockSeriesManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
                                 {(isSuperAdmin || allowedTabs.includes('pricing')) && <TabsContent value="pricing" className="mt-0 focus-visible:outline-none">{activeTab === 'pricing' && <PricingManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}
                                 {(isSuperAdmin || allowedTabs.includes('mock-evals')) && <TabsContent value="mock-evals" className="mt-0 focus-visible:outline-none">{activeTab === 'mock-evals' && <MockEvaluationManager permissions={actionPermissions} isSuperAdmin={isSuperAdmin} />}</TabsContent>}

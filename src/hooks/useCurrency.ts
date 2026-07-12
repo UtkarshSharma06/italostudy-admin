@@ -67,44 +67,51 @@ export function useCurrency() {
                     }
                 }
 
-                // 2. PRIMARY API: ipapi.co (HTTPS stable)
-                let data: any = null;
-                try {
-                    const response = await fetch('https://ipapi.co/json/');
-                    data = await response.json();
-                } catch (e) {
-                    // 3. SECONDARY API FALLBACK: ipwhois.app (HTTPS)
+                // 2. Sequential API waterfall with individual timeouts
+                const TIMEOUT_MS = 4000;
+
+                const fetchWithTimeout = async (url: string): Promise<any> => {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
                     try {
-                        console.log('Primary IP API failed, trying ipwhois...');
-                        const response = await fetch('https://ipwhois.app/json/');
-                        data = await response.json();
-                    } catch (e2) {
-                        console.error('All IP detection APIs failed');
+                        const res = await fetch(url, { signal: controller.signal });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        return await res.json();
+                    } finally {
+                        clearTimeout(timer);
+                    }
+                };
+
+                const apis: Array<{ url: string; getCode: (d: any) => string | undefined }> = [
+                    { url: 'https://api.country.is/', getCode: (d) => d?.country },
+                    { url: 'https://ipapi.co/json/', getCode: (d) => d?.country_code },
+                    { url: 'https://ipwhois.app/json/', getCode: (d) => d?.country_code },
+                ];
+
+                let countryCode: string | undefined;
+                for (const api of apis) {
+                    try {
+                        const data = await fetchWithTimeout(api.url);
+                        const code = api.getCode(data);
+                        if (code && typeof code === 'string' && code.trim().length === 2) {
+                            countryCode = code.trim().toUpperCase();
+                            break;
+                        }
+                    } catch {
+                        continue;
                     }
                 }
 
-                if (data && (data.status === 'success' || data.success !== false || data.status !== 'fail')) {
-                    const countryCode = data.countryCode || data.country_code || data.country;
-                    const apiCurrencyCode = data.currency || data.currency_code;
+                if (countryCode) {
+                    const currencyCode = COUNTRY_TO_CURRENCY[countryCode] || 'EUR';
+                    const symbolMap: Record<string, string> = { 'EUR': '€', 'INR': '₹', 'USD': '$', 'GBP': '£', 'PKR': '₨', 'BDT': '৳', 'NGN': '₦', 'TRY': '₺' };
 
-                    let currencyInfo: CurrencyInfo;
+                    const currencyInfo: CurrencyInfo = {
+                        code: currencyCode,
+                        symbol: symbolMap[currencyCode] || currencyCode,
+                        country: countryCode
+                    };
 
-                    if (apiCurrencyCode && apiCurrencyCode.length === 3) {
-                        currencyInfo = {
-                            code: apiCurrencyCode,
-                            symbol: data.currency_symbol || data.symbol || '',
-                            country: countryCode || 'XX'
-                        };
-                    } else {
-                        const code = COUNTRY_TO_CURRENCY[countryCode] || 'EUR';
-                        currencyInfo = {
-                            code,
-                            symbol: '',
-                            country: countryCode || 'XX'
-                        };
-                    }
-
-                    // Cache the result
                     localStorage.setItem('userCurrency', JSON.stringify({
                         data: currencyInfo,
                         timestamp: Date.now(),
@@ -116,13 +123,10 @@ export function useCurrency() {
                     // Final Guess: Navigator Language
                     const language = navigator.language;
                     const region = language.split('-')[1];
-                    if (region && COUNTRY_TO_CURRENCY[region]) {
-                        const guessedInfo = {
-                            code: COUNTRY_TO_CURRENCY[region],
-                            symbol: '',
-                            country: region
-                        };
-                        setCurrency(guessedInfo);
+                    if (region && COUNTRY_TO_CURRENCY[region.toUpperCase()]) {
+                        const currencyCode = COUNTRY_TO_CURRENCY[region.toUpperCase()];
+                        const symbolMap: Record<string, string> = { 'EUR': '€', 'INR': '₹', 'USD': '$', 'GBP': '£', 'PKR': '₨', 'BDT': '৳', 'NGN': '₦', 'TRY': '₺' };
+                        setCurrency({ code: currencyCode, symbol: symbolMap[currencyCode] || currencyCode, country: region });
                     } else {
                         setCurrency(DEFAULT_CURRENCY);
                     }
@@ -179,7 +183,8 @@ export function useCurrency() {
 
     const convertPrice = useCallback((priceInEUR: number): number => {
         const fallbackRates: Record<string, number> = {
-            'EUR': 1, 'USD': 1.08, 'GBP': 0.86, 'INR': 106.6, 'NGN': 1750, 'TRY': 33.5
+            'EUR': 1, 'USD': 1.08, 'GBP': 0.86, 'INR': 106.6,
+            'PKR': 302.0, 'BDT': 117.0, 'NGN': 1750, 'TRY': 33.5
         };
 
         const rate = rates[currency.code] || fallbackRates[currency.code];
@@ -193,7 +198,8 @@ export function useCurrency() {
 
     const getPaymentDetails = useCallback((amountInEUR: number) => {
         const fallbackRates: Record<string, number> = {
-            'EUR': 1, 'USD': 1.08, 'GBP': 0.86, 'INR': 106.6, 'NGN': 1750, 'TRY': 33.5
+            'EUR': 1, 'USD': 1.08, 'GBP': 0.86, 'INR': 106.6,
+            'PKR': 302.0, 'BDT': 117.0, 'NGN': 1750, 'TRY': 33.5
         };
         const rate = rates[currency.code] || fallbackRates[currency.code];
 
@@ -221,7 +227,7 @@ export function useCurrency() {
             return new Intl.NumberFormat(undefined, {
                 style: 'currency',
                 currency: details.currency,
-                minimumFractionDigits: (details.currency === 'INR' || details.currency === 'IDR' || details.currency === 'TRY') ? 0 : 2,
+                minimumFractionDigits: (details.currency === 'INR' || details.currency === 'IDR' || details.currency === 'TRY' || details.currency === 'PKR' || details.currency === 'BDT') ? 0 : 2,
                 maximumFractionDigits: 2
             }).format(details.amount);
         } catch (e) {

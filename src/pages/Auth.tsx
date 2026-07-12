@@ -17,13 +17,17 @@ export default function Auth() {
     const [requiresMFA, setRequiresMFA] = useState(false);
     const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
     const [mfaCode, setMfaCode] = useState("");
+    const [isVerifyingReset, setIsVerifyingReset] = useState(false);
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [resetCode, setResetCode] = useState("");
+    const [newPassword, setNewPassword] = useState("");
 
     const { user, profile, signIn, signOut, resetPassword, mfa } = useAuth();
     const navigate = useNavigate();
 
     // Check existing session for redirect or access denial
     useEffect(() => {
-        if (user && profile && !requiresMFA) {
+        if (user && profile && !requiresMFA && !isUpdatingPassword) {
             const isAdminRole = profile.role === 'admin' || profile.role === 'sub_admin';
             if (isAdminRole) {
                 navigate('/', { replace: true });
@@ -37,7 +41,7 @@ export default function Auth() {
                 });
             }
         }
-    }, [user, profile, requiresMFA, navigate, signOut, toast]);
+    }, [user, profile, requiresMFA, isUpdatingPassword, navigate, signOut, toast]);
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,9 +56,10 @@ export default function Auth() {
             if (error) throw error;
             
             toast.success('Email Sent', { 
-                description: "If an account exists, a reset link has been sent to your email." 
+                description: "If an account exists, a reset code has been sent to your email." 
             });
             setIsForgotPassword(false);
+            setIsVerifyingReset(true);
         } catch (err: any) {
             toast.error(err.message);
         } finally {
@@ -95,6 +100,47 @@ export default function Auth() {
             }
         } catch (err: any) {
             toast.error(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleVerifyResetOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (resetCode.length !== 6) return;
+        
+        setIsLoading(true);
+        try {
+            const { error } = await supabase.auth.verifyOtp({
+                email,
+                token: resetCode,
+                type: 'recovery'
+            });
+            if (error) throw error;
+            toast.success('Code verified!', { description: 'Please enter your new password.' });
+            setIsVerifyingReset(false);
+            setIsUpdatingPassword(true);
+        } catch (err: any) {
+            toast.error('Verification Failed', { description: err.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword.length < 6) {
+             toast.error('Password too short', { description: 'Password must be at least 6 characters.' });
+             return;
+        }
+        setIsLoading(true);
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+            toast.success('Password updated!', { description: 'Your password has been changed successfully.' });
+            navigate('/', { replace: true });
+        } catch (err: any) {
+            toast.error('Update failed', { description: err.message });
         } finally {
             setIsLoading(false);
         }
@@ -182,10 +228,10 @@ export default function Auth() {
                         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Admin</span>
                     </div>
                     <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
-                        {requiresMFA ? 'Two-Factor Authentication' : isForgotPassword ? 'Reset Password' : 'System Operations'}
+                        {requiresMFA ? 'Two-Factor Authentication' : isUpdatingPassword ? 'New Password' : isVerifyingReset ? 'Verify Reset Code' : isForgotPassword ? 'Reset Password' : 'System Operations'}
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">
-                        {requiresMFA ? 'Enter your 6-digit authenticator code' : isForgotPassword ? 'Enter your email to receive a reset link' : 'Sign in with your administrator account'}
+                        {requiresMFA ? 'Enter your 6-digit authenticator code' : isUpdatingPassword ? 'Set your new password' : isVerifyingReset ? 'Enter the code sent to your email' : isForgotPassword ? 'Enter your email to receive a reset link' : 'Sign in with your administrator account'}
                     </p>
                 </div>
 
@@ -219,6 +265,59 @@ export default function Auth() {
                                 className="w-full text-[13px] text-slate-500 hover:text-slate-800 transition-colors mt-4 font-medium"
                             >
                                 Cancel and sign out
+                            </button>
+                        </form>
+                    ) : isUpdatingPassword ? (
+                        <form onSubmit={handleUpdatePassword} className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="block text-[13px] font-medium text-slate-700">New Password</label>
+                                <Input
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="h-11 bg-slate-50/50 border-slate-200 text-slate-900 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 focus:bg-white transition-all text-sm"
+                                    required
+                                />
+                            </div>
+                            <Button
+                                type="submit"
+                                disabled={isLoading || newPassword.length < 6}
+                                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shadow-sm transition-all mt-2 text-sm"
+                            >
+                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Password'}
+                            </Button>
+                        </form>
+                    ) : isVerifyingReset ? (
+                        <form onSubmit={handleVerifyResetOtp} className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="block text-[13px] font-medium text-slate-700">Reset Code</label>
+                                <Input
+                                    type="text"
+                                    maxLength={6}
+                                    placeholder="000000"
+                                    value={resetCode}
+                                    onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
+                                    className="h-12 bg-slate-50/50 border-slate-200 text-slate-900 text-center text-xl tracking-widest rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 focus:bg-white transition-all font-mono"
+                                    required
+                                />
+                            </div>
+                            <Button
+                                type="submit"
+                                disabled={isLoading || resetCode.length !== 6}
+                                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium shadow-sm transition-all mt-2 text-sm"
+                            >
+                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify Code'}
+                            </Button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsVerifyingReset(false);
+                                    setIsForgotPassword(true);
+                                }}
+                                className="w-full text-[13px] text-slate-500 hover:text-slate-800 transition-colors mt-4 font-medium"
+                            >
+                                Go back
                             </button>
                         </form>
                     ) : isForgotPassword ? (
