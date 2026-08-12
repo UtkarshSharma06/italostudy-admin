@@ -104,6 +104,7 @@ const BookletManager = lazy(() => import('@/components/admin/BookletManager'));
 const SEOHealthMonitor = lazy(() => import('@/components/admin/SEOHealthMonitor'));
 const AnnouncementManager = lazy(() => import('@/components/admin/AnnouncementManager'));
 const AdCampaignManager = lazy(() => import('@/components/admin/store/AdCampaignManager'));
+const CourseAdCampaignManager = lazy(() => import('@/components/admin/store/CourseAdCampaignManager'));
 const SupportTickets = lazy(() => import('@/components/admin/SupportTickets'));
 const SupportTopics = lazy(() => import('@/components/admin/SupportTopics'));
 const NotesManager = lazy(() => import('@/components/admin/NotesManager'));
@@ -1081,6 +1082,7 @@ export default function Admin() {
                 { id: "pricing",  label: "Pricing",  icon: Zap     },
                 { id: "coupons",  label: "Coupons",  icon: Ticket  },
                 { id: "ad-campaigns", label: "Ad Campaigns", icon: ShoppingBag },
+                { id: "course-ads", label: "Course Ads", icon: GraduationCap },
                 { id: "abandoned-checkouts", label: "Abandoned Checkouts", icon: ShoppingCart },
                 { id: "pre-registrations", label: "Pre-Registrations", icon: Ticket },
                 { id: "marketing",    label: "Marketing",     icon: Radar        },
@@ -1267,6 +1269,7 @@ export default function Admin() {
                                 <TabsContent value="payments" className="mt-0 focus-visible:outline-none">{activeTab === 'payments' && <PaymentsManager />}</TabsContent>
                                 <TabsContent value="coupons" className="mt-0 focus-visible:outline-none">{activeTab === 'coupons' && <CouponsManager />}</TabsContent>
                                 <TabsContent value="ad-campaigns" className="mt-0 focus-visible:outline-none">{activeTab === 'ad-campaigns' && <AdCampaignManager />}</TabsContent>
+                                <TabsContent value="course-ads" className="mt-0 focus-visible:outline-none">{activeTab === 'course-ads' && <CourseAdCampaignManager />}</TabsContent>
                                 <TabsContent value="abandoned-checkouts" className="mt-0 focus-visible:outline-none">{activeTab === 'abandoned-checkouts' && <CheckoutAbandonmentsManager />}</TabsContent>
                                 <TabsContent value="mock-results" className="mt-0 focus-visible:outline-none">{activeTab === 'mock-results' && <MockResultsViewer />}</TabsContent>
                                 <TabsContent value="sessions" className="mt-0 focus-visible:outline-none">{activeTab === 'sessions' && <MockSessionManager />}</TabsContent>
