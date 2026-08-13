@@ -6,12 +6,14 @@ import { Label } from '@/components/ui/label';
 import {
     Ticket, Plus, Trash2, Tag, Calendar,
     Check, X, RefreshCw, Hash, Percent, DollarSign,
-    Users, MessageCircle
+    Users, MessageCircle, CreditCard, GraduationCap, Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type AppliesTo = 'all' | 'subscription' | 'course';
 
 interface Coupon {
     id: string;
@@ -23,6 +25,45 @@ interface Coupon {
     valid_until: string | null;
     is_active: boolean;
     course_id: string | null;
+    applies_to: AppliesTo;
+}
+
+const SCOPE_OPTIONS: { value: AppliesTo; label: string; desc: string; icon: any; color: string }[] = [
+    {
+        value: 'all',
+        label: 'All',
+        desc: 'Works on both subscriptions & courses',
+        icon: Layers,
+        color: 'indigo',
+    },
+    {
+        value: 'subscription',
+        label: 'Subscription Only',
+        desc: 'Only applies to subscription plans',
+        icon: CreditCard,
+        color: 'violet',
+    },
+    {
+        value: 'course',
+        label: 'Course Only',
+        desc: 'Only applies to course purchases',
+        icon: GraduationCap,
+        color: 'emerald',
+    },
+];
+
+function ScopePill({ applies_to }: { applies_to: AppliesTo }) {
+    const map: Record<AppliesTo, { label: string; cls: string }> = {
+        all:          { label: 'All',           cls: 'bg-indigo-50 text-indigo-600' },
+        subscription: { label: 'Sub Only',      cls: 'bg-violet-50 text-violet-600' },
+        course:       { label: 'Course Only',   cls: 'bg-emerald-50 text-emerald-600' },
+    };
+    const { label, cls } = map[applies_to] ?? map.all;
+    return (
+        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider', cls)}>
+            {label}
+        </span>
+    );
 }
 
 export default function CouponsManager() {
@@ -35,10 +76,10 @@ export default function CouponsManager() {
     const [newType, setNewType] = useState<'percent' | 'fixed'>('percent');
     const [newValue, setNewValue] = useState('');
     const [newLimit, setNewLimit] = useState('');
+    const [newAppliesTo, setNewAppliesTo] = useState<AppliesTo>('all');
     const [newCourseId, setNewCourseId] = useState('all');
 
     const [courses, setCourses] = useState<{ id: string, title: string }[]>([]);
-
     const [couponMessage, setCouponMessage] = useState('');
     const [isSavingMessage, setIsSavingMessage] = useState(false);
 
@@ -47,6 +88,11 @@ export default function CouponsManager() {
         fetchPricingMessage();
         fetchCourses();
     }, []);
+
+    // When scope changes away from 'course', reset the specific course selector
+    useEffect(() => {
+        if (newAppliesTo !== 'course') setNewCourseId('all');
+    }, [newAppliesTo]);
 
     const fetchCourses = async () => {
         try {
@@ -89,7 +135,6 @@ export default function CouponsManager() {
                 });
             if (error) throw error;
             toast.success('Pricing message updated');
-            // Update local state to trigger any immediate effects
             fetchPricingMessage();
         } catch (err: any) {
             toast.error(err.message);
@@ -128,14 +173,18 @@ export default function CouponsManager() {
                 discount_type: newType,
                 discount_value: parseFloat(newValue),
                 max_uses: newLimit ? parseInt(newLimit) : null,
-                course_id: newCourseId === 'all' ? null : newCourseId,
-            });
+                applies_to: newAppliesTo,
+                // course_id only relevant when applies_to='course' AND a specific course is chosen
+                course_id: newAppliesTo === 'course' && newCourseId !== 'all' ? newCourseId : null,
+            } as any);
 
             if (error) throw error;
             toast.success('Coupon created');
             setNewCode('');
             setNewValue('');
             setNewLimit('');
+            setNewAppliesTo('all');
+            setNewCourseId('all');
             fetchCoupons();
         } catch (err: any) {
             toast.error(err.message);
@@ -189,13 +238,14 @@ export default function CouponsManager() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Create Form */}
+                {/* ── Create Form ─────────────────────────────────────────── */}
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 h-fit">
                     <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2">
                         <Plus className="w-4 h-4 text-indigo-500" /> New Coupon
                     </h3>
 
-                    <div className="space-y-4">
+                    <div className="space-y-5">
+                        {/* Code */}
                         <div className="space-y-2">
                             <Label>Code</Label>
                             <div className="relative">
@@ -209,6 +259,7 @@ export default function CouponsManager() {
                             </div>
                         </div>
 
+                        {/* Type + Value */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Type</Label>
@@ -246,6 +297,7 @@ export default function CouponsManager() {
                             </div>
                         </div>
 
+                        {/* Max Uses */}
                         <div className="space-y-2">
                             <Label>Max Uses (Optional)</Label>
                             <div className="relative">
@@ -260,32 +312,88 @@ export default function CouponsManager() {
                             </div>
                         </div>
 
+                        {/* ── Coupon Scope ── */}
                         <div className="space-y-2">
-                            <Label>Target Course</Label>
-                            <Select value={newCourseId} onValueChange={setNewCourseId}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select target course" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All / General / Subscription</SelectItem>
-                                    {courses.map(c => (
-                                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Label>Applies To</Label>
+                            <div className="grid grid-cols-1 gap-2">
+                                {SCOPE_OPTIONS.map(opt => {
+                                    const Icon = opt.icon;
+                                    const isSelected = newAppliesTo === opt.value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setNewAppliesTo(opt.value)}
+                                            className={cn(
+                                                'w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left',
+                                                isSelected
+                                                    ? opt.color === 'indigo' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                                                    : opt.color === 'violet' ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
+                                                    : 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                                                    : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                'w-8 h-8 rounded-xl flex items-center justify-center shrink-0',
+                                                isSelected
+                                                    ? opt.color === 'indigo' ? 'bg-indigo-100 text-indigo-600'
+                                                    : opt.color === 'violet' ? 'bg-violet-100 text-violet-600'
+                                                    : 'bg-emerald-100 text-emerald-600'
+                                                    : 'bg-slate-100 text-slate-400'
+                                            )}>
+                                                <Icon className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={cn('text-xs font-black', isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400')}>
+                                                    {opt.label}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 font-medium truncate">{opt.desc}</p>
+                                            </div>
+                                            {isSelected && (
+                                                <div className={cn(
+                                                    'w-5 h-5 rounded-full flex items-center justify-center shrink-0',
+                                                    opt.color === 'indigo' ? 'bg-indigo-500' : opt.color === 'violet' ? 'bg-violet-500' : 'bg-emerald-500'
+                                                )}>
+                                                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
+
+                        {/* Specific Course — only shown when scope is 'course' */}
+                        {newAppliesTo === 'course' && (
+                            <div className="space-y-2">
+                                <Label>Specific Course (Optional)</Label>
+                                <Select value={newCourseId} onValueChange={setNewCourseId}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="All courses" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Courses</SelectItem>
+                                        {courses.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-[10px] text-slate-400 font-medium">
+                                    Leave as "All Courses" to allow on any course purchase.
+                                </p>
+                            </div>
+                        )}
 
                         <Button
                             onClick={handleCreate}
                             disabled={isCreating || !newCode || !newValue}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl h-12 mt-4"
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl h-12 mt-2"
                         >
                             {isCreating ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Create Coupon'}
                         </Button>
                     </div>
                 </div>
 
-                {/* Pricing Message Manager */}
+                {/* ── Pricing Message ─────────────────────────────────────── */}
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 h-fit space-y-6">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -318,7 +426,7 @@ export default function CouponsManager() {
                     </div>
                 </div>
 
-                {/* List */}
+                {/* ── Coupon List ──────────────────────────────────────────── */}
                 <div className="lg:col-span-2 space-y-4">
                     {coupons.map(coupon => (
                         <div key={coupon.id} className="group bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-between hover:shadow-md transition-all">
@@ -333,7 +441,7 @@ export default function CouponsManager() {
                                     <span className="text-[9px] uppercase tracking-wider">OFF</span>
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 flex-wrap">
                                         <h4 className="text-lg font-black font-mono tracking-tight text-slate-900 dark:text-white uppercase">{coupon.code}</h4>
                                         <span className={cn(
                                             "text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest",
@@ -341,8 +449,10 @@ export default function CouponsManager() {
                                         )}>
                                             {coupon.is_active ? 'Active' : 'Inactive'}
                                         </span>
+                                        {/* Scope pill */}
+                                        <ScopePill applies_to={coupon.applies_to ?? 'all'} />
                                     </div>
-                                    <div className="flex items-center gap-4 mt-2 text-xs text-slate-400 font-medium">
+                                    <div className="flex items-center gap-4 mt-2 text-xs text-slate-400 font-medium flex-wrap">
                                         <span className="flex items-center gap-1.5"><Tag size={12} /> {coupon.used_count} used</span>
                                         {coupon.max_uses && (
                                             <span className="flex items-center gap-1.5"><Users size={12} /> Limit: {coupon.max_uses}</span>
