@@ -49,7 +49,11 @@ export default function SystemConfig({ permissions, isSuperAdmin }: { permission
 
                 const newConfig = { ...config };
                 data?.forEach(setting => {
-                    if (setting.key === 'maintenance_mode') newConfig.maintenance_mode = setting.value as boolean;
+                    if (setting.key === 'maintenance_mode') {
+                        const val = setting.value;
+                        // Support old boolean format and new {active, started_at} format
+                        newConfig.maintenance_mode = val === true || (typeof val === 'object' && val !== null && (val as any).active === true);
+                    }
                     if (setting.key === 'allow_registrations') newConfig.allow_registrations = setting.value as boolean;
                     if (setting.key === 'enable_community') newConfig.enable_community = setting.value as boolean;
                     if (setting.key === 'is_review_collector_enabled') (newConfig as any).is_review_collector_enabled = setting.value as boolean;
@@ -76,7 +80,15 @@ export default function SystemConfig({ permissions, isSuperAdmin }: { permission
         try {
             const user = (await supabase.auth.getUser()).data.user;
             const updates = [
-                { key: 'maintenance_mode', value: config.maintenance_mode, updated_by: user?.id },
+                {
+                    key: 'maintenance_mode',
+                    // Embed the start timestamp so all clients share the same global grace period.
+                    // Old value (boolean false) is kept when turning OFF for clarity.
+                    value: config.maintenance_mode
+                        ? { active: true, started_at: new Date().toISOString() }
+                        : false,
+                    updated_by: user?.id
+                },
                 { key: 'allow_registrations', value: config.allow_registrations, updated_by: user?.id },
                 { key: 'enable_community', value: config.enable_community, updated_by: user?.id },
                 { key: 'is_review_collector_enabled', value: (config as any).is_review_collector_enabled, updated_by: user?.id },
