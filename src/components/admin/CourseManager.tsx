@@ -45,6 +45,8 @@ interface Course {
     rating?: number;
     theme_color?: string;
     icon_type?: string;
+    pre_register_discount_percent?: number;
+    demo_video_url?: string | null;
 }
 interface CourseSubject { id: string; course_id: string; title: string; position: number; }
 interface CourseChapter { id: string; subject_id: string; title: string; position: number; }
@@ -55,7 +57,7 @@ interface Exam { id: string; name: string; slug: string; }
 
 const EMPTY_COURSE: Omit<Course, 'id' | 'created_at'> = {
     title: '', slug: '', description: '', thumbnail_url: '', banner_url: '',
-    exam_model_id: null, price_eur: 0, discount_price_eur: null, expiry_days: 365, is_active: true, is_free: false, regional_prices: {}, launch_date: '', lecture_type: 'Recorded', lectures_count: '', features: [], tests_count: '', badge_text: '', is_recommended: false, rating: 0.0, theme_color: '', icon_type: '', pre_register_discount_percent: 0
+    exam_model_id: null, price_eur: 0, discount_price_eur: null, expiry_days: 365, is_active: true, is_free: false, regional_prices: {}, launch_date: '', lecture_type: 'Recorded', lectures_count: '', features: [], tests_count: '', badge_text: '', is_recommended: false, rating: 0.0, theme_color: '', icon_type: '', pre_register_discount_percent: 0, demo_video_url: ''
 };
 
 export default function CourseManager() {
@@ -139,7 +141,7 @@ export default function CourseManager() {
         
         let finalSlug = courseForm.slug?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || null;
 
-        const payload = { ...courseForm, slug: finalSlug, price_eur: Number(courseForm.price_eur), discount_price_eur: courseForm.discount_price_eur ? Number(courseForm.discount_price_eur) : null, expiry_days: Number(courseForm.expiry_days), regional_prices: cleanedRegionalPrices, launch_date: courseForm.launch_date, lecture_type: courseForm.lecture_type, pre_register_discount_percent: Number(courseForm.pre_register_discount_percent || 0) };
+        const payload = { ...courseForm, slug: finalSlug, price_eur: Number(courseForm.price_eur), discount_price_eur: courseForm.discount_price_eur ? Number(courseForm.discount_price_eur) : null, expiry_days: Number(courseForm.expiry_days), regional_prices: cleanedRegionalPrices, launch_date: courseForm.launch_date, lecture_type: courseForm.lecture_type, pre_register_discount_percent: Number(courseForm.pre_register_discount_percent || 0), demo_video_url: courseForm.demo_video_url || null };
         const { error } = editingCourse
             ? await supabase.from('courses').update(payload).eq('id', editingCourse.id)
             : await supabase.from('courses').insert([payload]);
@@ -541,6 +543,10 @@ export default function CourseManager() {
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Banner Image URL</Label>
                 <Input value={courseForm.banner_url} onChange={e => setCourseForm(p => ({ ...p, banner_url: e.target.value }))} className="h-10" />
             </div>
+            <div className="space-y-1.5 md:col-span-2">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Demo Video URL</Label>
+                <Input value={courseForm.demo_video_url || ''} onChange={e => setCourseForm(p => ({ ...p, demo_video_url: e.target.value }))} className="h-10" placeholder="e.g. YouTube URL or .mp4 link" />
+            </div>
             <Button onClick={handleSaveCourse} className="w-full mt-4 md:col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12">Save Course</Button>
         </div>
     );
@@ -685,6 +691,7 @@ export default function CourseManager() {
                                                     <div className="space-y-4 py-2">
                                                         <div><Label className="text-xs font-bold text-slate-500 uppercase">Lecture Title</Label><Input value={lectureForm.title} onChange={e=>setLectureForm(p=>({...p, title:e.target.value}))} /></div>
                                                         <div><Label className="text-xs font-bold text-slate-500 uppercase">YouTube URL / Video ID</Label><Input value={lectureForm.youtube_video_id} onChange={e=>setLectureForm(p=>({...p, youtube_video_id:e.target.value}))} /></div>
+                                                        <div><Label className="text-xs font-bold text-slate-500 uppercase">Duration (Seconds)</Label><Input type="number" placeholder="e.g. 1200 (for 20m)" value={lectureForm.duration_seconds} onChange={e=>setLectureForm(p=>({...p, duration_seconds:e.target.value}))} /></div>
                                                         <div className="flex items-center gap-2 mt-2"><Switch checked={lectureForm.is_preview} onCheckedChange={c=>setLectureForm(p=>({...p, is_preview:c}))} /><Label className="font-bold">Free Preview</Label></div>
                                                     </div>
                                                     <Button onClick={handleSaveLecture} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10">Save Video</Button>
@@ -733,6 +740,7 @@ export default function CourseManager() {
                                                                                 <div className="space-y-4 py-2">
                                                                                     <div><Label className="text-xs font-bold text-slate-500 uppercase">Lecture Title</Label><Input value={lectureForm.title} onChange={e=>setLectureForm(p=>({...p, title:e.target.value}))} /></div>
                                                                                     <div><Label className="text-xs font-bold text-slate-500 uppercase">YouTube URL / Video ID</Label><Input value={lectureForm.youtube_video_id} onChange={e=>setLectureForm(p=>({...p, youtube_video_id:e.target.value}))} /></div>
+                                                                                    <div><Label className="text-xs font-bold text-slate-500 uppercase">Duration (Seconds)</Label><Input type="number" placeholder="e.g. 1200 (for 20m)" value={lectureForm.duration_seconds} onChange={e=>setLectureForm(p=>({...p, duration_seconds:e.target.value}))} /></div>
                                                                                     <div className="flex items-center gap-2 mt-2"><Switch checked={lectureForm.is_preview} onCheckedChange={c=>setLectureForm(p=>({...p, is_preview:c}))} /><Label className="font-bold">Free Preview</Label></div>
                                                                                 </div>
                                                                                 <Button onClick={handleSaveLecture} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10">Save Changes</Button>
